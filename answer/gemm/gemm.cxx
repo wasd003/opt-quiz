@@ -91,27 +91,33 @@ void dfs(double *a, double *b, double *c, const int n, const int base) {
         return;
     }
 
-    /* #pragma omp sections */
+    #pragma omp parallel sections
     {
-        /* #pragma omp section */
+        #pragma omp section
         dfs(ele(a, 0, 0), ele(b, 0, 0), ele(c, 0, 0), n / 2, base);
-        /* #pragma omp section */
+
+        #pragma omp section
         dfs(ele(a, 0, 0), ele(b, 0, n / 2), ele(c, 0, n / 2), n / 2, base);
-        /* #pragma omp section */
+
+        #pragma omp section
         dfs(ele(a, n / 2, 0), ele(b, 0, 0), ele(c, n / 2, 0), n / 2, base);
-        /* #pragma omp section */
+
+        #pragma omp section
         dfs(ele(a, n / 2, 0), ele(b, 0, n / 2), ele(c, n / 2, n / 2), n / 2, base);
     }
 
-    /* #pragma omp sections */
+    #pragma omp parallel sections
     {
-        /* #pragma omp section */
+        #pragma omp section
         dfs(ele(a, 0, n / 2), ele(b, n / 2, 0), ele(c, 0, 0), n / 2, base);
-        /* #pragma omp section */
+
+        #pragma omp section
         dfs(ele(a, 0, n / 2), ele(b, n / 2, n / 2), ele(c, 0, n / 2), n / 2, base);
-        /* #pragma omp section */
+
+        #pragma omp section
         dfs(ele(a, n / 2, n / 2), ele(b, n / 2, 0), ele(c, n / 2, 0), n / 2, base);
-        /* #pragma omp section */
+
+        #pragma omp section
         dfs(ele(a, n / 2, n / 2), ele(b, n / 2, n / 2), ele(c, n / 2, n / 2), n / 2, base);
     }
 }
@@ -126,7 +132,7 @@ int main() {
     init();
 
     ClockWatch<CLOCK_REALTIME> clock;
-    mat_tiling();
+    mat_tiling_multi_layer();
     auto tv = clock.Get();
     std::cout << tv << std::endl;
     return 0;
