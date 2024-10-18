@@ -24,12 +24,14 @@ template<clockid_t ClockID>
 struct ClockWatch {
     timespec beginSpec;
 
-    ClockWatch() {
-        clock_gettime(ClockID, &beginSpec);
-    }
-
+private:
     double duration(timespec beforeTs, timespec afterTs) {
         return afterTs.tv_sec - beforeTs.tv_sec + 1e-9 * (afterTs.tv_nsec - beforeTs.tv_nsec);
+    }
+
+public:
+    ClockWatch() {
+        clock_gettime(ClockID, &beginSpec);
     }
 
     double Get() {
