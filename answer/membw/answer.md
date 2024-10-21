@@ -1,2 +1,3 @@
-see: https://github.com/jeffhammond/STREAM
-change compilation flags into `-O3 -march=native -fstrict-aliasing -ftree-vectorize -fopenmp -DSTREAM_ARRAY_SIZE=80000000 -DNTIMES=20`
+- 使用STREAM benchmark,通过调整数组大小测试不同memory hierarchy上的内存带宽
+- run.sh用来跑测试
+- 调整Makefile中的编译选项,指定数组大小
