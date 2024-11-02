@@ -1,4 +1,6 @@
 #include <cassert>
+#include <cstdlib>
+#include <format>
 #include <immintrin.h>
 #include <quiz/base.h>
 #include <x86intrin.h>
@@ -11,6 +13,23 @@ alignas(64) double A[N][N];
 alignas(64) double B[N][N];
 alignas(64) double C[N][N];
 alignas(64) double ans[N][N];
+
+/**
+ * some utility functions
+ */
+static inline double *PTR(double *m, const int i, const int j) {
+    return m + i * N + j;
+}
+
+#define ALIGNED 1
+
+#if ALIGNED
+#define load_wrapper(ptr) (_mm512_load_pd(ptr))
+#define store_wrapper(ptr, value) (_mm512_store_pd(ptr, value))
+#else
+#define load_wrapper(ptr) (_mm512_loadu_pd(ptr))
+#define store_wrapper(ptr, value) (_mm512_storeu_pd(ptr, value))
+#endif
 
 void init() {
     for (int i = 0; i < N; i ++ )
@@ -83,27 +102,23 @@ void mat_subword_instruction_parallsim() {
     }
 }
 
-static inline double *PTR(double *m, const int i, const int j) {
-    return m + i * N + j;
-}
-
 void do_block(double * __restrict matA, double * __restrict matB, double * __restrict matC,
     const int block_size, const int unroll, const int stride) {
     __m512d c[unroll];
     for (int i = 0; i < block_size; i ++ ) {
         for (int j = 0; j < block_size; j += stride) {
             for (int u = 0; u < unroll; u ++ ) {
-                c[u] = _mm512_loadu_pd(PTR(matC, i, j + u * 8));
+                c[u] = load_wrapper(PTR(matC, i, j + u * 8));
             }
             for (int k = 0; k < block_size; k ++ ) {
                 auto a = _mm512_set1_pd(*PTR(matA, i, k));
                 for (int u = 0; u < unroll; u ++ ) {
-                    auto b = _mm512_loadu_pd(PTR(matB, k, j + u * 8));
+                    auto b = load_wrapper(PTR(matB, k, j + u * 8));
                     c[u] = _mm512_fmadd_pd(a, b, c[u]);
                 }
             }
             for (int u = 0; u < unroll; u ++ ) {
-                _mm512_storeu_pd(PTR(matC, i, j + u * 8), c[u]);
+                store_wrapper(PTR(matC, i, j + u * 8), c[u]);
             }
         }
     }
