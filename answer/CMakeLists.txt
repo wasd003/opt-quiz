@@ -11,7 +11,7 @@ foreach(src_file ${answer_files})
     # target_compile_options(${exe_name} PRIVATE  -Werror -Wall -fsanitize=address)
     # target_link_options(${exe_name} PRIVATE -fsanitize=address)
 
-    target_compile_options(${exe_name} PRIVATE  -Werror -Wall)
+    target_compile_options(${exe_name} PRIVATE  -Werror -Wall -march=native)
 
     target_link_libraries(${exe_name} benchmark::benchmark)
 

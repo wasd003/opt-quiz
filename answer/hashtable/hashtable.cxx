@@ -2,22 +2,31 @@
 #include <cstring>
 #include <unordered_set>
 #include <quiz/base.h>
+#include <x86intrin.h>
 
 constexpr static int TEST_SIZE = (1UL << 24);
 constexpr static int TEST_STRUCT_SIZE = 48;
+constexpr static int AVX2_WIDTH = 256;
+constexpr static int BYTE_WIDTH = 8;
+
+template <typename T, std::size_t ALIGNMENT_IN_BYTES>
+using AlignedVector = std::vector<T, AlignedAllocator<T, ALIGNMENT_IN_BYTES>>;
 
 template<typename T, size_t Capacity, typename SecondHashFn>
 requires requires(T t, SecondHashFn second_hashfn) {
     requires std::is_same_v<decltype(second_hashfn(t)), char>;
 }
 struct hash_set {
+private:
+    constexpr static int bucket_size = 256;
+    constexpr static int stride = AVX2_WIDTH / BYTE_WIDTH;
+
+private:
     std::vector<T> data;
-    std::vector<char> control;
+    AlignedVector<char, stride> control;
     std::hash<T> first_hasher;
     SecondHashFn second_hasher;
     size_t size {0};
-
-    constexpr static int bucket_size = 256;
 
 private:
     size_t first_hash(const T& val) const {
@@ -35,20 +44,46 @@ private:
         char hash_val2;
     };
 
+    int lowest_bit_position(uint32_t x) const { return __builtin_ctz(x); }
+
     find_result find(const T& key) const {
         const auto hash_val1 = first_hash(key);
         const auto hash_val2 = second_hash(key);
-        for (size_t i = hash_val1; ; i = (i + 1) % Capacity) {
-            const auto c = control[i];
-            if (!c)
-                return {i, hash_val1, hash_val2};
-            if ((c == hash_val2) && (data[i] == key))
-                return {i, hash_val1, hash_val2};
+        size_t i = hash_val1;
+        const char *cp = control.data();
+        const auto tar = _mm256_set1_epi8(hash_val2);
+        const auto zero = _mm256_set1_epi8(0);
+        while (true) {
+            for (; i % stride; i = (i + 1) % Capacity) {
+                if (cp[i] == 0) {
+                    return {i, hash_val1, hash_val2};
+                }
+                if (cp[i] == hash_val2 && data[i] == key) {
+                    return {i, hash_val1, hash_val2};
+                }
+            }
+            for (; i + stride <= Capacity; i = (i + stride) % Capacity) {
+                assert(i % stride == 0);
+                auto cbytes = _mm256_load_si256(reinterpret_cast<const __m256i*>(&cp[i]));
+                uint32_t tar_mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(cbytes, tar));
+                uint32_t zero_mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(cbytes, zero));
+                while (tar_mask) {
+                    int j = lowest_bit_position(tar_mask);
+                    if (data[i + j] == key) {
+                        return {i + j, hash_val1, hash_val2};
+                    }
+                    tar_mask ^= 1 << j;
+                }
+                if (zero_mask) {
+                    return {i + lowest_bit_position(zero_mask), hash_val1, hash_val2};
+                }
+            }
         }
     }
 
 public:
     hash_set() {
+        static_assert(Capacity % stride == 0);
         data.resize(Capacity);
         control.resize(Capacity);
     }
@@ -128,8 +163,8 @@ void init() {
 }
 
 void perf_test() {
-    // hash_set<test_struct, TEST_SIZE << 1, second_hashfn> h;
-    std::unordered_set<test_struct> h;
+    hash_set<test_struct, TEST_SIZE << 1, second_hashfn> h;
+    // std::unordered_set<test_struct> h;
     // test insert
     for (int i = 0; i < TEST_SIZE; i ++ ) {
         h.insert(test_data[i]);
@@ -140,6 +175,7 @@ void perf_test() {
         }
     }
 }
+
 
 int main() {
     init();
