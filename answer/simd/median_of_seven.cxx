@@ -72,10 +72,11 @@ int main() {
     std::iota(data1.begin(), data1.end(), 16.0f);
     auto lo = simd::load_from(data0.data());
     auto hi = simd::load_from(data1.data());
-    auto down = simd::shift_lo_with_carry<16>(lo, hi);
-    PRINT_REG(down);
-    auto up = simd::shift_hi_with_carry<16>(lo, hi);
-    PRINT_REG(up);
+    PRINT_REG(lo);
+    PRINT_REG(hi);
+    simd::inplace_shift_lo_with_carry<2>(lo, hi);
+    PRINT_REG(lo);
+    PRINT_REG(hi);
 
 
     return 0;

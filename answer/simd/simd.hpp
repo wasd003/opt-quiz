@@ -505,11 +505,13 @@ KEWB_FORCE_INLINE integer_512 rotate_hi(integer_512 r0) {
  */
 template<int S>
 KEWB_FORCE_INLINE float_512 shift_lo(float_512 r0) {
+    static_assert(S >= 0  &&  S <= 16);
     return blend(rotate_lo<S>(r0), load_value(static_cast<float>(0)), shift_down_blend_mask<S>());
 }
 
 template<int S>
 KEWB_FORCE_INLINE float_512 shift_hi(float_512 r0) {
+    static_assert(S >= 0  &&  S <= 16);
     return blend(load_value(static_cast<float>(0)), rotate_hi<S>(r0), shift_up_blend_mask<S>());
 }
 
@@ -528,30 +530,36 @@ KEWB_FORCE_INLINE float_512 shift_hi(float_512 r0) {
  */
 template<int S>
 KEWB_FORCE_INLINE float_512 shift_lo_with_carry(float_512 lo, float_512 hi) {
+    static_assert(S >= 0  &&  S <= 16);
     return blend(rotate_lo<S>(lo), rotate_lo<S>(hi), shift_down_blend_mask<S>());
 }
 
 template<int S>
 KEWB_FORCE_INLINE float_512 shift_hi_with_carry(float_512 lo, float_512 hi) {
+    static_assert(S >= 0  &&  S <= 16);
     return blend(rotate_hi<S>(lo), rotate_hi<S>(hi), shift_up_blend_mask<S>());
 }
 
 
 
-
+/**
+ * SEQ: 12
+ * @in_place_shift_lo_with_carry: same with shift_lo_with_carry, but in place
+ * suppose: lo=[1,2,3,4], hi=[5,6,7,8]
+ * shift_lo with 2. now lo=[3,4,5,6], hi=[7,8,0,0]
+ */
 template<int S>
-KEWB_FORCE_INLINE void
-in_place_shift_down_with_carry(__m512& lo, __m512& hi)
-{
+KEWB_FORCE_INLINE void inplace_shift_lo_with_carry(float_512& lo, float_512& hi) {
     static_assert(S >= 0  &&  S <= 16);
 
     constexpr uint32_t  zmask = (0xFFFFu >> (unsigned) S);
     constexpr uint32_t  bmask = ~zmask & 0xFFFFu;
-    __m512i             perm  = make_shift_permutation<S, bmask>();
+    integer_512         perm  = make_shift_permutation<S, bmask>();
 
     lo = _mm512_permutex2var_ps(lo, perm, hi);
     hi = _mm512_maskz_permutex2var_ps((__mmask16) zmask, hi, perm, hi);
 }
+
 
 
 template<int S>
