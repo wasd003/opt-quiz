@@ -340,10 +340,8 @@ KEWB_FORCE_INLINE integer_512 permute(integer_512 r, integer_512 perm) {
 
 template<int A, int B, int C, int D, int E, int F, int G, int H,
          int I, int J, int K, int L, int M, int N, int O, int P>
-KEWB_FORCE_INLINE __m512i
-permute(__m512i r0)
-{
-    return _mm512_permutexvar_epi32(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
+KEWB_FORCE_INLINE integer_512 permute(integer_512 r0) {
+    return _mm512_permutexvar_epi32(load_values<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(), r0);
 }
 
 
