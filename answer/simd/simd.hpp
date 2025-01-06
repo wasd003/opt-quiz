@@ -407,81 +407,74 @@ make_shift_permutation()
 }
 
 template<int R>
-KEWB_FORCE_INLINE __m512
-rotate(__m512 r0)
-{
-    if constexpr ((R % 16) == 0)
-    {
-        return r0;
-    }
-    else
-    {
-        constexpr int    S = (R > 0) ? (16 - (R % 16)) : -R;
-        constexpr int    A = (S + 0) % 16;
-        constexpr int    B = (S + 1) % 16;
-        constexpr int    C = (S + 2) % 16;
-        constexpr int    D = (S + 3) % 16;
-        constexpr int    E = (S + 4) % 16;
-        constexpr int    F = (S + 5) % 16;
-        constexpr int    G = (S + 6) % 16;
-        constexpr int    H = (S + 7) % 16;
-        constexpr int    I = (S + 8) % 16;
-        constexpr int    J = (S + 9) % 16;
-        constexpr int    K = (S + 10) % 16;
-        constexpr int    L = (S + 11) % 16;
-        constexpr int    M = (S + 12) % 16;
-        constexpr int    N = (S + 13) % 16;
-        constexpr int    O = (S + 14) % 16;
-        constexpr int    P = (S + 15) % 16;
+auto consteval calc_offset() {
+    constexpr int S = (R > 0) ? (16 - (R % 16)) : -R;
+    constexpr int A = (S + 0) % 16;
+    constexpr int B = (S + 1) % 16;
+    constexpr int C = (S + 2) % 16;
+    constexpr int D = (S + 3) % 16;
+    constexpr int E = (S + 4) % 16;
+    constexpr int F = (S + 5) % 16;
+    constexpr int G = (S + 6) % 16;
+    constexpr int H = (S + 7) % 16;
+    constexpr int I = (S + 8) % 16;
+    constexpr int J = (S + 9) % 16;
+    constexpr int K = (S + 10) % 16;
+    constexpr int L = (S + 11) % 16;
+    constexpr int M = (S + 12) % 16;
+    constexpr int N = (S + 13) % 16;
+    constexpr int O = (S + 14) % 16;
+    constexpr int P = (S + 15) % 16;
+    return std::make_tuple(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P);
+}
 
+template<int R>
+KEWB_FORCE_INLINE float_512 rotate(float_512 r0)
+{
+    if constexpr ((R % 16) == 0) {
+        return r0;
+    } else {
+        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = calc_offset<R>();
         return _mm512_permutexvar_ps(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
     }
 }
 
 template<int R>
-KEWB_FORCE_INLINE __m512i
-rotate(__m512i r0)
+KEWB_FORCE_INLINE integer_512 rotate(integer_512 r0)
 {
-    if constexpr ((R % 16) == 0)
-    {
+    if constexpr ((R % 16) == 0) {
         return r0;
-    }
-    else
-    {
-        constexpr int    S = (R > 0) ? (16 - (R % 16)) : -R;
-        constexpr int    A = (S + 0) % 16;
-        constexpr int    B = (S + 1) % 16;
-        constexpr int    C = (S + 2) % 16;
-        constexpr int    D = (S + 3) % 16;
-        constexpr int    E = (S + 4) % 16;
-        constexpr int    F = (S + 5) % 16;
-        constexpr int    G = (S + 6) % 16;
-        constexpr int    H = (S + 7) % 16;
-        constexpr int    I = (S + 8) % 16;
-        constexpr int    J = (S + 9) % 16;
-        constexpr int    K = (S + 10) % 16;
-        constexpr int    L = (S + 11) % 16;
-        constexpr int    M = (S + 12) % 16;
-        constexpr int    N = (S + 13) % 16;
-        constexpr int    O = (S + 14) % 16;
-        constexpr int    P = (S + 15) % 16;
-
+    } else {
+        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = calc_offset<R>();
         return _mm512_permutexvar_epi32(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
     }
 }
 
+/**
+ * SEQ: 9
+ * @rotate_lo: rotate simd register towards lower direction
+ * @rotate_hi: rotate simd register towards higher direction
+ */
 template<int R>
-KEWB_FORCE_INLINE __m512
-rotate_down(__m512 r0)
-{
+KEWB_FORCE_INLINE float_512 rotate_lo(float_512 r0) {
     static_assert(R >= 0);
     return rotate<-R>(r0);
 }
 
 template<int R>
-KEWB_FORCE_INLINE __m512
-rotate_up(__m512 r0)
-{
+KEWB_FORCE_INLINE float_512 rotate_hi(float_512 r0) {
+    static_assert(R >= 0);
+    return rotate<R>(r0);
+}
+
+template<int R>
+KEWB_FORCE_INLINE integer_512 rotate_lo(integer_512 r0) {
+    static_assert(R >= 0);
+    return rotate<-R>(r0);
+}
+
+template<int R>
+KEWB_FORCE_INLINE integer_512 rotate_hi(integer_512 r0) {
     static_assert(R >= 0);
     return rotate<R>(r0);
 }
@@ -521,42 +514,42 @@ template<int S>
 KEWB_FORCE_INLINE __m512
 shift_up(__m512 r0)
 {
-    return blend(rotate_up<S>(r0), load_value(0), shift_up_blend_mask<S>());
+    return blend(rotate_hi<S>(r0), load_value(0), shift_up_blend_mask<S>());
 }
 
 template<int S>
 KEWB_FORCE_INLINE __m512
 shift_down(__m512 r0)
 {
-    return blend(rotate_down<S>(r0), load_value(0), shift_down_blend_mask<S>());
+    return blend(rotate_lo<S>(r0), load_value(0), shift_down_blend_mask<S>());
 }
 
 template<int S>
 KEWB_FORCE_INLINE __m512
 shift_up_with_carry(__m512 lo, __m512 hi)
 {
-    return blend(rotate_up<S>(lo), rotate_up<S>(hi), shift_up_blend_mask<S>());
+    return blend(rotate_hi<S>(lo), rotate_hi<S>(hi), shift_up_blend_mask<S>());
 }
 
 template<int S>
 KEWB_FORCE_INLINE __m512
 shift_down_with_carry(__m512 lo, __m512 hi)
 {
-    return blend(rotate_down<S>(lo), rotate_down<S>(hi), shift_down_blend_mask<S>());
+    return blend(rotate_lo<S>(lo), rotate_lo<S>(hi), shift_down_blend_mask<S>());
 }
 
 template<int S>
 KEWB_FORCE_INLINE __m512
 shift_up_and_fill(__m512 r0, float fill)
 {
-    return blend(rotate_up<S>(r0), load_value(fill), shift_up_blend_mask<S>());
+    return blend(rotate_hi<S>(r0), load_value(fill), shift_up_blend_mask<S>());
 }
 
 template<int S>
 KEWB_FORCE_INLINE __m512
 shift_down_and_fill(__m512 r0, float fill)
 {
-    return blend(rotate_down<S>(r0), load_value(fill), shift_down_blend_mask<S>());
+    return blend(rotate_lo<S>(r0), load_value(fill), shift_down_blend_mask<S>());
 }
 
 KEWB_FORCE_INLINE __m512
