@@ -361,6 +361,25 @@ KEWB_FORCE_INLINE float_512 masked_permute(float_512 r, integer_512 perm, uint32
     return _mm512_mask_permutexvar_ps(r, (__mmask16) mask, perm, r);
 }
 
+/**
+ * SEQ: 8
+ * @make_perm
+ * create a permutation register based on immediate values
+ */
+template<unsigned... IDXS>
+KEWB_FORCE_INLINE auto
+make_perm()
+{
+    static_assert(sizeof...(IDXS) == 8  ||  sizeof...(IDXS) == 16);
+
+    if constexpr (sizeof...(IDXS) == 8) {
+        return _mm256_setr_epi32(IDXS...);
+    } else {
+        return load_values<IDXS...>();
+    }
+}
+
+
 
 
 template<int BIAS, uint32_t MASK>
@@ -598,19 +617,6 @@ make_bitmask()
             (E <<  4) | (F <<  5) | (G <<  6) | (H <<  7) |
             (I <<  8) | (J <<  9) | (K << 10) | (L << 11) |
             (M << 12) | (N << 13) | (O << 14) | (P << 15));
-}
-
-template<unsigned... IDXS>
-KEWB_FORCE_INLINE auto
-make_perm()
-{
-    static_assert(sizeof...(IDXS) == 8  ||  sizeof...(IDXS) == 16);
-
-    if constexpr (sizeof...(IDXS) == 8) {
-        return _mm256_setr_epi32(IDXS...);
-    } else {
-        return load_values<IDXS...>();
-    }
 }
 
 KEWB_FORCE_INLINE __m512
