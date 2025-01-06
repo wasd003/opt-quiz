@@ -328,7 +328,7 @@ KEWB_FORCE_INLINE float_512 blend(float_512 r0, float_512 r1, uint32_t mask) {
  * SEQ: 6
  * @permute
  * export answer register based on r and perm
- *      if perm[i] == k, then answer[i] = r[k]
+ *      answer[i] = r[perm[i]]
  */
 KEWB_FORCE_INLINE float_512 permute(float_512 r, integer_512 perm) {
     return _mm512_permutexvar_ps(perm, r);
@@ -344,7 +344,22 @@ KEWB_FORCE_INLINE integer_512 permute(integer_512 r0) {
     return _mm512_permutexvar_epi32(load_values<A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P>(), r0);
 }
 
+/**
+ * SEQ: 7
+ * @masked_permute
+ * export answer register based on r and perm and mask
+ *     if mask[i] == 1, then answer[i] = r[perm[i]]
+ *     if mask[i] == 0, then answer[i] = other_reg[i]
+ */
+KEWB_FORCE_INLINE float_512 masked_permute(float_512 r, float_512 other_reg, integer_512 perm, uint32_t mask) {
+    return _mm512_mask_permutexvar_ps(other_reg, (__mmask16) mask, perm, r);
+}
 
+///    if mask[i] == 1, then answer[i] = r[perm[i]]
+///    if mask[i] == 0, then answer[i] = r[i]
+KEWB_FORCE_INLINE float_512 masked_permute(float_512 r, integer_512 perm, uint32_t mask) {
+    return _mm512_mask_permutexvar_ps(r, (__mmask16) mask, perm, r);
+}
 
 
 
@@ -585,33 +600,15 @@ make_bitmask()
             (M << 12) | (N << 13) | (O << 14) | (P << 15));
 }
 
-template<unsigned A, unsigned B, unsigned C, unsigned D,
-         unsigned E, unsigned F, unsigned G, unsigned H,
-         unsigned I, unsigned J, unsigned K, unsigned L,
-         unsigned M, unsigned N, unsigned O, unsigned P>
-KEWB_FORCE_INLINE __m512i
-make_permute2()
-{
-    static_assert((A < 16) && (B < 16) && (C < 16) && (D < 16) &&
-                  (E < 16) && (F < 16) && (G < 16) && (H < 16) &&
-                  (I < 16) && (J < 16) && (K < 16) && (L < 16) &&
-                  (M < 16) && (N < 16) && (O < 16) && (P < 16));
-
-    return _mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P);
-}
-
 template<unsigned... IDXS>
 KEWB_FORCE_INLINE auto
-make_permute()
+make_perm()
 {
     static_assert(sizeof...(IDXS) == 8  ||  sizeof...(IDXS) == 16);
 
-    if constexpr (sizeof...(IDXS) == 8)
-    {
+    if constexpr (sizeof...(IDXS) == 8) {
         return _mm256_setr_epi32(IDXS...);
-    }
-    else
-    {
+    } else {
         return load_values<IDXS...>();
     }
 }
@@ -622,22 +619,22 @@ sort_two_lanes_of_8(float_512 vals)
     //- Precompute the permutations and bitmasks for the 6 stages of this bitonic sorting sequence.
     //                                   0   1   2   3   4   5   6   7     0   1   2   3   4   5   6   7
     //                                  ---------------------------------------------------
-    integer_512 const     perm0 = make_permute<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
+    integer_512 const     perm0 = make_perm<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
     constexpr m512  mask0 = make_bitmask<0,  1,  0,  1,  0,  1,  0,  1,    0,  1,  0,  1,  0,  1,  0,  1>();
 
-    integer_512 const     perm1 = make_permute<3,  2,  1,  0,  7,  6,  5,  4,   11, 10,  9,  8, 15, 14, 13, 12>();
+    integer_512 const     perm1 = make_perm<3,  2,  1,  0,  7,  6,  5,  4,   11, 10,  9,  8, 15, 14, 13, 12>();
     constexpr m512  mask1 = make_bitmask<0,  0,  1,  1,  0,  0,  1,  1,    0,  0,  1,  1,  0,  0,  1,  1>();
 
-    integer_512 const     perm2 = make_permute<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
+    integer_512 const     perm2 = make_perm<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
     constexpr m512  mask2 = make_bitmask<0,  1,  0,  1,  0,  1,  0,  1,    0,  1,  0,  1,  0,  1,  0,  1>();
 
-    integer_512 const     perm3 = make_permute<7,  6,  5,  4,  3,  2,  1,  0,   15, 14, 13, 12, 11, 10,  9,  8>();
+    integer_512 const     perm3 = make_perm<7,  6,  5,  4,  3,  2,  1,  0,   15, 14, 13, 12, 11, 10,  9,  8>();
     constexpr m512  mask3 = make_bitmask<0,  0,  0,  0,  1,  1,  1,  1,    0,  0,  0,  0,  1,  1,  1,  1>();
 
-    integer_512 const     perm4 = make_permute<2,  3,  0,  1,  6,  7,  4,  5,   10, 11,  8,  9, 14, 15, 12, 13>();
+    integer_512 const     perm4 = make_perm<2,  3,  0,  1,  6,  7,  4,  5,   10, 11,  8,  9, 14, 15, 12, 13>();
     constexpr m512  mask4 = make_bitmask<0,  0,  1,  1,  0,  0,  1,  1,    0,  0,  1,  1,  0,  0,  1,  1>();
 
-    integer_512 const     perm5 = make_permute<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
+    integer_512 const     perm5 = make_perm<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
     constexpr m512  mask5 = make_bitmask<0,  1,  0,  1,  0,  1,  0,  1,    0,  1,  0,  1,  0,  1,  0,  1>();
 
     vals = compare_with_exchange(vals, perm0, mask0);
@@ -656,22 +653,22 @@ sort_two_lanes_of_7(float_512 vals)
     //- Precompute the permutations and bitmasks for the 6 stages of this bitonic sorting sequence.
     //                                   0   1   2   3   4   5   6   7     0   1   2   3   4   5   6   7
     //                                  ---------------------------------------------------
-    integer_512 const     perm0 = make_permute<4,  5,  6,  3,  0,  1,  2,  7,   12, 13, 14, 11,  8,  9, 10, 15>();
+    integer_512 const     perm0 = make_perm<4,  5,  6,  3,  0,  1,  2,  7,   12, 13, 14, 11,  8,  9, 10, 15>();
     constexpr m512  mask0 = make_bitmask<0,  0,  0,  0,  1,  1,  1,  0,    0,  0,  0,  0,  1,  1,  1,  0>();
 
-    integer_512 const     perm1 = make_permute<2,  3,  0,  1,  6,  5,  4,  7,   10, 11,  8,  9, 14, 13, 12, 15>();
+    integer_512 const     perm1 = make_perm<2,  3,  0,  1,  6,  5,  4,  7,   10, 11,  8,  9, 14, 13, 12, 15>();
     constexpr m512  mask1 = make_bitmask<0,  0,  1,  1,  0,  0,  1,  0,   0,  0,  1,  1,  0,  0,  1,  0>();
 
-    integer_512 const     perm2 = make_permute<1,  0,  4,  5,  2,  3,  6,  7,    9,  8, 12, 13, 10, 11, 14, 15>();
+    integer_512 const     perm2 = make_perm<1,  0,  4,  5,  2,  3,  6,  7,    9,  8, 12, 13, 10, 11, 14, 15>();
     constexpr m512  mask2 = make_bitmask<0,  1,  0,  0,  1,  1,  0,  0,    0,  1,  0,  0,  1,  1,  0,  0>();
 
-    integer_512 const     perm3 = make_permute<0,  1,  3,  2,  5,  4,  6,  7,    8,  9, 11, 10, 13, 12, 14, 15>();
+    integer_512 const     perm3 = make_perm<0,  1,  3,  2,  5,  4,  6,  7,    8,  9, 11, 10, 13, 12, 14, 15>();
     constexpr m512  mask3 = make_bitmask<0,  0,  0,  1,  0,  1,  0,  0,    0,  0,  0,  1,  0,  1,  0,  0>();
 
-    integer_512 const     perm4 = make_permute<0,  4,  2,  6,  1,  5,  3,  7,    8, 12, 10, 14,  9, 13, 11, 15>();
+    integer_512 const     perm4 = make_perm<0,  4,  2,  6,  1,  5,  3,  7,    8, 12, 10, 14,  9, 13, 11, 15>();
     constexpr m512  mask4 = make_bitmask<0,  0,  0,  0,  1,  0,  1,  0,    0,  0,  0,  0,  1,  0,  1,  0>();
 
-    integer_512 const     perm5 = make_permute<0,  2,  1,  4,  3,  6,  5,  7,    8, 10,  9, 12, 11, 14, 13, 15>();
+    integer_512 const     perm5 = make_perm<0,  2,  1,  4,  3,  6,  5,  7,    8, 10,  9, 12, 11, 14, 13, 15>();
     constexpr m512  mask5 = make_bitmask<0,  0,  1,  0,  1,  0,  1,  0,    0,  0,  1,  0,  1,  0,  1,  0>();
 
     vals = compare_with_exchange(vals, perm0, mask0);

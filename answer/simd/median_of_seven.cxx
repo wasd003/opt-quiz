@@ -67,10 +67,15 @@ int main() {
 #endif
 
     std::vector<float> data0 {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    auto r0 = simd::load_value(42.0f);
-    auto r1 = simd::load_value(1.0f);
-    auto ans = simd::blend(r0, r1, 0x1);
-    PRINT_REG(ans);
+    std::vector<float> data1 (16, 42.0f);
+    auto rev_perm = simd::make_perm<15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0>();
+    auto r0 = simd::load_from(data0.data());
+    auto other = simd::load_from(data1.data());
+    auto rr = simd::masked_permute(r0, rev_perm, (int32_t)1<<1);
+    PRINT_REG(rr);
+    rr = simd::masked_permute(r0, other, rev_perm, (int32_t)1<<1);
+    PRINT_REG(rr);
+
 
     return 0;
 }
