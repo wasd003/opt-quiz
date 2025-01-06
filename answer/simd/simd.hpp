@@ -310,14 +310,6 @@ public:
                                           reg);
     }
 
-    ///    if mask[i] == 1, then answer[i] = reg[perm[i]]
-    ///    if mask[i] == 0, then answer[i] = reg[i]
-    static force_inline float_512 masked_permute(float_512 reg,
-                                                 integer_512 perm,
-                                                 uint32_t mask) {
-        return _mm512_mask_permutexvar_ps(reg, (__mmask16)mask, perm, reg);
-    }
-
     /**
      * SEQ: 8
      * @make_perm: create a permutation register based on immediate values
