@@ -66,26 +66,16 @@ int main() {
     print(algo_answer, "algo_answer");
 #endif
 
-    std::vector<float> data0 {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    std::vector<float> data1 (16, 42.0f);
-    auto rev_perm = simd::make_perm<15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0>();
-    const auto r0 = simd::load_from(data0.data());
-    auto other = simd::load_from(data1.data());
-    auto rr = simd::masked_permute(r0, rev_perm, (int32_t)1<<1);
-    PRINT_REG(rr);
-    rr = simd::masked_permute(r0, other, rev_perm, (int32_t)1<<1);
-    PRINT_REG(r0);
-    auto lo_reg = simd::rotate_lo<1>(r0);
-    PRINT_REG(lo_reg);
-    auto hi_reg = simd::rotate_hi<1>(r0);
-    PRINT_REG(hi_reg);
 
-    // auto shift_lo = simd::shift_lo<1>(hi_reg);
-    // PRINT_REG(shift_lo);
-
-    auto shift_hi = simd::shift_hi<15>(hi_reg);
-    PRINT_REG(shift_hi);
-
+    std::vector<float> data0(16), data1(16);
+    std::iota(data0.begin(), data0.end(), 0.0f);
+    std::iota(data1.begin(), data1.end(), 16.0f);
+    auto lo = simd::load_from(data0.data());
+    auto hi = simd::load_from(data1.data());
+    auto down = simd::shift_lo_with_carry<16>(lo, hi);
+    PRINT_REG(down);
+    auto up = simd::shift_hi_with_carry<16>(lo, hi);
+    PRINT_REG(up);
 
 
     return 0;

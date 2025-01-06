@@ -514,6 +514,28 @@ KEWB_FORCE_INLINE float_512 shift_hi(float_512 r0) {
 }
 
 
+/**
+ * SEQ: 11
+ * @shift_lo_with_carry: suppose we have a ruler x points to lo.
+ * now shift [lo][hi] towards lo, what falls into X will the final answer
+ *    [  lo  ][  hi  ] <-
+ *    |  X   |
+ *
+ * @shift_hi_with_carry: suppose we have a ruler x points to hi.
+ * now shift [lo][hi] towards hi, what falls into X will the final answer
+ *    ->[  lo  ][  hi  ]
+ *              |  X   |
+ */
+template<int S>
+KEWB_FORCE_INLINE float_512 shift_lo_with_carry(float_512 lo, float_512 hi) {
+    return blend(rotate_lo<S>(lo), rotate_lo<S>(hi), shift_down_blend_mask<S>());
+}
+
+template<int S>
+KEWB_FORCE_INLINE float_512 shift_hi_with_carry(float_512 lo, float_512 hi) {
+    return blend(rotate_hi<S>(lo), rotate_hi<S>(hi), shift_up_blend_mask<S>());
+}
+
 
 
 
@@ -531,20 +553,6 @@ in_place_shift_down_with_carry(__m512& lo, __m512& hi)
     hi = _mm512_maskz_permutex2var_ps((__mmask16) zmask, hi, perm, hi);
 }
 
-
-template<int S>
-KEWB_FORCE_INLINE __m512
-shift_up_with_carry(__m512 lo, __m512 hi)
-{
-    return blend(rotate_hi<S>(lo), rotate_hi<S>(hi), shift_up_blend_mask<S>());
-}
-
-template<int S>
-KEWB_FORCE_INLINE __m512
-shift_down_with_carry(__m512 lo, __m512 hi)
-{
-    return blend(rotate_lo<S>(lo), rotate_lo<S>(hi), shift_down_blend_mask<S>());
-}
 
 template<int S>
 KEWB_FORCE_INLINE __m512
