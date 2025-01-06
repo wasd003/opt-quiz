@@ -286,6 +286,23 @@ make_shift_permutation()
     return _mm512_setr_epi32(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
 }
 
+template<int S>
+KEWB_FORCE_INLINE constexpr uint32_t
+shift_up_blend_mask() {
+    static_assert(S >= 0  &&  S <= 16);
+    return (0xFFFFu << (unsigned) S) & 0xFFFFu;
+}
+
+template<int S>
+KEWB_FORCE_INLINE constexpr uint32_t
+shift_down_blend_mask() {
+    static_assert(S >= 0  &&  S <= 16);
+    return (0xFFFFu << (unsigned)(16 - S)) & 0xFFFFu;
+}
+
+
+/********* Above on Helper function **********/
+
 
 /**
  * SEQ: 0
@@ -449,9 +466,6 @@ make_perm()
 }
 
 
-
-
-
 /**
  * SEQ: 9
  * @rotate_lo: rotate simd register towards lower direction
@@ -481,13 +495,27 @@ KEWB_FORCE_INLINE integer_512 rotate_hi(integer_512 r0) {
     return rotate<R>(r0);
 }
 
+
+/**
+ * SEQ: 10
+ * @shift_lo: shift simd register towards lower direction
+ * @shift_hi: shift simd register towards higher direction
+ *      - discard the values that are shifted out
+ *      - leave the empty slots with 0
+ */
 template<int S>
-KEWB_FORCE_INLINE constexpr uint32_t
-shift_down_blend_mask()
-{
-    static_assert(S >= 0  &&  S <= 16);
-    return (0xFFFFu << (unsigned)(16 - S)) & 0xFFFFu;
+KEWB_FORCE_INLINE float_512 shift_hi(float_512 r0) {
+    return blend(load_value(static_cast<float>(0)), rotate_hi<S>(r0), shift_up_blend_mask<S>());
 }
+
+template<int S>
+KEWB_FORCE_INLINE float_512 shift_lo(float_512 r0) {
+    return blend(rotate_lo<S>(r0), load_value(static_cast<float>(0)), shift_down_blend_mask<S>());
+}
+
+
+
+
 
 template<int S>
 KEWB_FORCE_INLINE void
@@ -503,28 +531,6 @@ in_place_shift_down_with_carry(__m512& lo, __m512& hi)
     hi = _mm512_maskz_permutex2var_ps((__mmask16) zmask, hi, perm, hi);
 }
 
-
-template<int S>
-KEWB_FORCE_INLINE constexpr uint32_t
-shift_up_blend_mask()
-{
-    static_assert(S >= 0  &&  S <= 16);
-    return (0xFFFFu << (unsigned) S) & 0xFFFFu;
-}
-
-template<int S>
-KEWB_FORCE_INLINE __m512
-shift_up(__m512 r0)
-{
-    return blend(rotate_hi<S>(r0), load_value(0), shift_up_blend_mask<S>());
-}
-
-template<int S>
-KEWB_FORCE_INLINE __m512
-shift_down(__m512 r0)
-{
-    return blend(rotate_lo<S>(r0), load_value(0), shift_down_blend_mask<S>());
-}
 
 template<int S>
 KEWB_FORCE_INLINE __m512

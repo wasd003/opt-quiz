@@ -80,6 +80,12 @@ int main() {
     auto hi_reg = simd::rotate_hi<1>(r0);
     PRINT_REG(hi_reg);
 
+    // auto shift_lo = simd::shift_lo<1>(hi_reg);
+    // PRINT_REG(shift_lo);
+
+    auto shift_hi = simd::shift_hi<15>(hi_reg);
+    PRINT_REG(shift_hi);
+
 
 
     return 0;
