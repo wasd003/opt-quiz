@@ -21,10 +21,10 @@ public:
     using integer_512 = __m512i;
 
 private:
-    #define force_inline __attribute__((__always_inline__)) inline
+    #define force_inline __attribute__((__always_inline__))
 
     template <int R>
-    static auto consteval rotate_offset() {
+    static force_inline auto consteval rotate_offset() {
         constexpr int S = (R > 0) ? (16 - (R % 16)) : -R;
         constexpr int A = (S + 0) % 16;
         constexpr int B = (S + 1) % 16;
