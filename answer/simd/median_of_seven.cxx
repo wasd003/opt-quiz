@@ -1,7 +1,8 @@
 #include "simd.hpp"
 #include <quiz/base.h>
+#include <benchmark/benchmark.h>
 
-void vanilla_median_kernel(const std::vector<float>& src, std::vector<float>& answer)
+static void vanilla_median_kernel(const std::vector<float>& src, std::vector<float>& answer)
 {
     assert(src.size() - answer.size() == 6);
     std::array<float, 7>  seven;
@@ -12,26 +13,25 @@ void vanilla_median_kernel(const std::vector<float>& src, std::vector<float>& an
     }
 }
 
-// [0,6] [1,7]
-// [2,8] [3,9]
-// [4,10] [5,11]
-// [6,12] [7,13]
-// [8,14] [9,15] 
-// ...
-// [14,20] [15,21]
-void simd_median_kernel(const std::vector<float>& src, std::vector<float>& answer) {
+static void simd_median_kernel(const std::vector<float>& src, std::vector<float>& answer) {
     assert(src.size() - answer.size() == 6);
     const int n = src.size();
-    simd::float_512 data, cur, next;
-    UNUSED(data);
-    UNUSED(cur);
-    next = simd::load_from(src.data());
+    auto data = simd::load_value(0.0f);
+    auto next = simd::load_from(src.data());
+    const auto load_perm = simd::make_perm<0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 8>();
+    const auto store_perm = simd::make_perm<3, 11, 3, 11, 3, 11, 3, 11, 3, 11, 3, 11, 3, 11, 3, 11>();
     int i = 0;
     for (i = 0; i + 32 < n; i += 16) {
-        cur = next;
+        auto lo = next;
         next = simd::load_from(src.data() + i + 16);
-        // simd::r512f vals = simd::sort_two_lanes_of_7(cur);
-        // simd::store_to(answer.data() + i, vals);
+        auto hi = next;
+        for (int j = 0; j < 16; j += 2) {
+            auto tmp = simd::permute(lo, load_perm);
+            tmp = simd::sort_two_lanes_of_7(tmp);
+            data = simd::masked_permute(tmp, data, store_perm, 3 << j);
+            simd::inplace_shift_lo_with_carry<2>(lo, hi);
+        }
+        simd::store_to(answer.data() + i, data);
     }
 
     /// fallback to vanilla way
@@ -43,39 +43,80 @@ void simd_median_kernel(const std::vector<float>& src, std::vector<float>& answe
     }
 }
 
-void print(auto&& data, auto&& name) {
-    std::cout << name;
+static void print(auto&& data, auto&& name) {
+    std::cout << name << ": ";
     std::for_each(data.begin(), data.end(), [](auto x) { std::cout << x << " "; });
     std::cout << std::endl;
 }
 
-int main() {
-#if 0
-    constexpr static int N = 10;
+static void correct_test() {
+    constexpr static int N = 1e7;
     std::vector<float> src(N);
     std::vector<float> vanilla_answer(src.size() - 6);
-    std::vector<float> algo_answer(src.size() - 6);
+    std::vector<float> simd_answer(src.size() - 6);
+#if 1
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
     std::generate(src.begin(), src.end(), []() { return static_cast<float>(std::rand()) / RAND_MAX; });
-    print(src, "src");
-
-    vanilla_median_kernel(src, vanilla_answer);
-    simd_median_kernel(src, algo_answer);
-
-    print(vanilla_answer, "vanilla_answer");
-    print(algo_answer, "algo_answer");
+#else
+    for (int i = 0; i < N; i ++ ) src[i] = i;
+    std::shuffle(src.begin(), src.end(), std::mt19937(std::random_device()()));
 #endif
 
+    vanilla_median_kernel(src, vanilla_answer);
+    simd_median_kernel(src, simd_answer);
 
-    std::vector<float> data0(16), data1(16), data2(16, 1.0f);
-    std::iota(data0.begin(), data0.end(), 0.0f);
-    std::iota(data1.begin(), data1.end(), 16.0f);
-    auto lo = simd::load_from(data0.data());
-    auto hi = simd::load_from(data1.data());
-    auto zero = simd::load_from(data2.data());
-    auto ans = simd::fused_multiply_add(lo, hi, zero);
-    PRINT_REG(ans);
+    // print(src, "src");
+    // print(vanilla_answer, "vanilla_answer");
+    // print(simd_answer, "algo_answer");
 
-
-    return 0;
+    const auto [vanilla_it, simd_it] = std::mismatch(vanilla_answer.begin(), vanilla_answer.end(), simd_answer.begin());
+    if (vanilla_it == vanilla_answer.end()) {
+        std::cout << "PASS" << std::endl;
+    } else {
+        std::cout << "FAIL" << std::endl;
+        std::cout << "Index: " << std::distance(vanilla_answer.begin(), vanilla_it) << std::endl;
+        std::cout << "vanilla: " << *vanilla_it << " simd: " << *simd_it << std::endl;
+    }
 }
+
+
+static auto create_input_vector(int N) {
+    std::vector<float> src(N);
+    std::vector<float> vanilla_answer(src.size() - 6);
+    std::vector<float> simd_answer(src.size() - 6);
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    std::generate(src.begin(), src.end(), []() { return static_cast<float>(std::rand()) / RAND_MAX; });
+    return std::make_tuple(src, vanilla_answer, simd_answer);
+}
+
+static void bm_vanilla_kernel(benchmark::State& state) {
+    const int N = state.range(0);
+    auto [src, vanilla_answer, simd_answer] = create_input_vector(N);
+
+    for (auto _ : state) {
+        vanilla_median_kernel(src, vanilla_answer);
+        benchmark::DoNotOptimize(vanilla_answer);
+        benchmark::ClobberMemory();
+    }
+    state.SetBytesProcessed(N * state.iterations());
+}
+
+static void bm_simd_kernel(benchmark::State& state) {
+    const int N = state.range(0);
+    auto [src, vanilla_answer, simd_answer] = create_input_vector(N);
+
+    for (auto _ : state) {
+        simd_median_kernel(src, vanilla_answer);
+        benchmark::DoNotOptimize(vanilla_answer);
+        benchmark::ClobberMemory();
+    }
+    state.SetBytesProcessed(N * state.iterations());
+}
+
+constexpr static int MIN_ELEMENT_NR = 1e6;
+constexpr static int MAX_ELEMENT_NR = 1e7;
+
+BENCHMARK(bm_vanilla_kernel) ->Range(MIN_ELEMENT_NR, MAX_ELEMENT_NR);
+BENCHMARK(bm_simd_kernel) ->Range(MIN_ELEMENT_NR, MAX_ELEMENT_NR);
+
+BENCHMARK_MAIN();
