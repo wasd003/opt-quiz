@@ -22,7 +22,7 @@ void vanilla_median_kernel(const std::vector<float>& src, std::vector<float>& an
 void simd_median_kernel(const std::vector<float>& src, std::vector<float>& answer) {
     assert(src.size() - answer.size() == 6);
     const int n = src.size();
-    simd::rf512 data, cur, next;
+    simd::float_512 data, cur, next;
     UNUSED(data);
     UNUSED(cur);
     next = simd::load_from(src.data());
@@ -68,12 +68,13 @@ int main() {
 
     std::vector<float> data0 {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
     std::vector<float> data1(16, 16);
-    auto r0 = simd::load_from(data0.data());
+    std::vector<int32_t> data2(16, 16);
+    auto r0 = simd::masked_load_from(data0.data(), 42.0f, (1 << 1));
     auto r1 = simd::load_from(data1.data());
-    auto ans = simd::shift_down_with_carry<3>(r0, r1);
-    PRINT_REG(ans);
-    ans = simd::rotate_down<3>(r0);
-    PRINT_REG(ans);
+    auto r2 = simd::load_from(data2.data());
+    PRINT_REG(r0);
+    PRINT_REG(r1);
+    PRINT_REG(r2);
 
     return 0;
 }

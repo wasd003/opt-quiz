@@ -33,9 +33,9 @@ using rd256 = __m256d;
 using rf256 = __m256;
 using ri256 = __m256i;
 
-using rd512 = __m512d;
-using rf512 = __m512;
-using ri512 = __m512i;
+using double_512 = __m512d;
+using float_512 = __m512;
+using integer_512 = __m512i;
 
 using r512d = __m512d;
 using r512f = __m512;
@@ -43,8 +43,6 @@ using r512i = __m512i;
 
 using m256 = __m256i;
 using m512 = uint32_t;
-
-using cx_float = std::complex<float>;
 
 void
 print_vals(char const* pname, double const* pvals, int n)
@@ -159,7 +157,7 @@ print_reg(char const* pname, ri256 r)
 //------
 //
 void
-print_reg(char const* pname, rd512 r)
+print_reg(char const* pname, double_512 r)
 {
     double  vals[8];
 
@@ -168,7 +166,7 @@ print_reg(char const* pname, rd512 r)
 }
 
 void
-print_reg(char const* pname, rf512 r)
+print_reg(char const* pname, float_512 r)
 {
     float   vals[16];
 
@@ -177,7 +175,7 @@ print_reg(char const* pname, rf512 r)
 }
 
 void
-print_reg(char const* pname, ri512 r)
+print_reg(char const* pname, integer_512 r)
 {
     int32_t vals[16];
 
@@ -219,60 +217,52 @@ print_mask(char const* pname, __m256i mask, int)
 #define PRINT_MASK16(M)     print_mask(#M, M, 16)
 #define PRINT_LINE()        printf("\n");
 
-KEWB_FORCE_INLINE __m512
-load_from_address(void const* psrc)
-{
-    return _mm512_loadu_ps(psrc);
+
+/**
+ * SEQ: 0
+ * @load_value
+ * load a immediate value into SIMD register
+ */
+KEWB_FORCE_INLINE float_512 load_value(float immediate_val) {
+    return _mm512_set1_ps(immediate_val);
 }
 
-KEWB_FORCE_INLINE r512d
-load_from(double const* psrc)
-{
+KEWB_FORCE_INLINE integer_512 load_value(int32_t immediate_val) {
+    return _mm512_set1_epi32(immediate_val);
+}
+
+/**
+ * SEQ: 1
+ * @load_from
+ * load data from memory into SIMD register
+ */
+KEWB_FORCE_INLINE double_512 load_from(const double *psrc) {
     return _mm512_loadu_pd(psrc);
 }
 
-KEWB_FORCE_INLINE r512f
-load_from(float const* psrc)
-{
+KEWB_FORCE_INLINE float_512 load_from(const float* psrc) {
     return _mm512_loadu_ps(psrc);
 }
 
-KEWB_FORCE_INLINE r512f
-masked_load_from(float const* psrc, float fill, m512 mask)
-{
-    return _mm512_mask_loadu_ps(_mm512_set1_ps(fill), (__mmask16) mask, psrc);
-}
-
-KEWB_FORCE_INLINE r512f
-masked_load_from(float const* psrc, r512f fill, m512 mask)
-{
-    return _mm512_mask_loadu_ps(fill, (__mmask16) mask, psrc);
-}
-
-KEWB_FORCE_INLINE r512f
-load_from(cx_float const* psrc)
-{
-    return _mm512_loadu_ps(psrc);
-}
-
-KEWB_FORCE_INLINE r512i
-load_from(int32_t const* psrc)
-{
+KEWB_FORCE_INLINE integer_512 load_from(const int32_t* psrc) {
     return _mm512_loadu_epi32(psrc);
 }
 
-
-KEWB_FORCE_INLINE __m512
-load_value(float v)
-{
-    return _mm512_set1_ps(v);
+/**
+ * SEQ: 2
+ * @masked_load_from
+ * load data from [memory] or [SIMD register/immediate value]
+ *      - if mask bit is 1, load from memory
+ *      - if mask bit is 0, load from SIMD register/immediate value
+ */
+KEWB_FORCE_INLINE float_512 masked_load_from(const float* psrc, float_512 simd_reg, uint32_t mask) {
+    return _mm512_mask_loadu_ps(simd_reg, (__mmask16) mask, psrc);
 }
 
-KEWB_FORCE_INLINE __m512i
-load_value(int32_t i)
-{
-    return _mm512_set1_epi32(i);
+KEWB_FORCE_INLINE float_512 masked_load_from(const float* psrc, float immediate_val, uint32_t mask) {
+    return _mm512_mask_loadu_ps(_mm512_set1_ps(immediate_val), (__mmask16) mask, psrc);
 }
+
 
 KEWB_FORCE_INLINE void
 store_to_address(void* pdst, __m512i r)
@@ -526,74 +516,6 @@ fused_multiply_add(__m512 r0, __m512 r1, __m512 acc)
 }
 
 
-template<int KernelSize, int KernelCenter>
-void
-avx_convolve(float* pDst, float const* pKrnl, float const* pSrc, size_t len)
-{
-    //- The convolution kernel must have non-negative size and fit with a single reister.
-    //
-    static_assert(KernelSize > 1  &&  KernelSize <= 16);
-
-    //- Thie index of the kernel center must be valid.
-    //
-    static_assert(KernelCenter >= 0  &&  KernelCenter < KernelSize);
-
-    //- Convolution flips the kernel, and so the kernel center (in kernel array coordinates)
-    //  must be converted to the coordinates of the window.
-    //
-    constexpr int   windowCenter = KernelSize - KernelCenter - 1;
-
-    __m512  prev;   //- Bottom of the input data window
-    __m512  curr;   //- Middle of the input data windows
-    __m512  next;   //- Top of the input data window
-    __m512  lo;     //- Primary work data register, used to multiply kernel coefficients
-    __m512  hi;     //- Upper work data register, supplies values to the top of 'lo'
-    __m512  sum;    //- Accumulated value
-
-    __m512  kcoeff[KernelSize];     //- Coefficients of the convolution kernel
-
-    //- Broadcast each kernel coefficient into its own register, to be used later in the FMA call.
-    //
-    for (int i = 0, j = KernelSize - 1;  i < KernelSize;  ++i, --j)
-    {
-        kcoeff[i] = load_value(pKrnl[j]);
-    }
-
-    //- Preload the initial input data window; note the zeroes in the register representing data
-    //  preceding the input array.
-    //
-    prev = load_value(0.0f);
-    curr = load_from_address(pSrc);
-    next = load_from_address(pSrc + 16);
-
-    for (auto pEnd = pSrc + len - 16;  pSrc < pEnd;  pSrc += 16, pDst += 16)
-    {
-        sum = load_value(0.0f);
-
-        //- Init the work data registers to the correct offset in the input data window.
-        //
-        lo = shift_up_with_carry<windowCenter>(prev, curr);
-        hi = shift_up_with_carry<windowCenter>(curr, next);
-
-        //- Slide the input data window upward by a register's work of values.  This
-        //  could also be done at the bottom of the loop, but experimentation has shown
-        //  that sliding the input data window here results in slightly better performance.
-        //
-        prev = curr;
-        curr = next;
-        next = load_from_address(pSrc + 32);
-
-        for (int k = 0;  k < KernelSize;  ++k)
-        {
-            sum = fused_multiply_add(kcoeff[k], lo, sum);   //- Update the accumulator
-            in_place_shift_down_with_carry<1>(lo, hi);
-        }
-
-        store_to_address(pDst, sum);
-    }
-}
-
-
 KEWB_FORCE_INLINE __m512
 mask_permute(__m512 r0, __m512 r1, __m512i perm, uint32_t mask)
 {
@@ -679,27 +601,27 @@ make_permute()
 }
 
 KEWB_FORCE_INLINE __m512
-sort_two_lanes_of_8(rf512 vals)
+sort_two_lanes_of_8(float_512 vals)
 {
     //- Precompute the permutations and bitmasks for the 6 stages of this bitonic sorting sequence.
     //                                   0   1   2   3   4   5   6   7     0   1   2   3   4   5   6   7
     //                                  ---------------------------------------------------
-    ri512 const     perm0 = make_permute<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
+    integer_512 const     perm0 = make_permute<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
     constexpr m512  mask0 = make_bitmask<0,  1,  0,  1,  0,  1,  0,  1,    0,  1,  0,  1,  0,  1,  0,  1>();
 
-    ri512 const     perm1 = make_permute<3,  2,  1,  0,  7,  6,  5,  4,   11, 10,  9,  8, 15, 14, 13, 12>();
+    integer_512 const     perm1 = make_permute<3,  2,  1,  0,  7,  6,  5,  4,   11, 10,  9,  8, 15, 14, 13, 12>();
     constexpr m512  mask1 = make_bitmask<0,  0,  1,  1,  0,  0,  1,  1,    0,  0,  1,  1,  0,  0,  1,  1>();
 
-    ri512 const     perm2 = make_permute<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
+    integer_512 const     perm2 = make_permute<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
     constexpr m512  mask2 = make_bitmask<0,  1,  0,  1,  0,  1,  0,  1,    0,  1,  0,  1,  0,  1,  0,  1>();
 
-    ri512 const     perm3 = make_permute<7,  6,  5,  4,  3,  2,  1,  0,   15, 14, 13, 12, 11, 10,  9,  8>();
+    integer_512 const     perm3 = make_permute<7,  6,  5,  4,  3,  2,  1,  0,   15, 14, 13, 12, 11, 10,  9,  8>();
     constexpr m512  mask3 = make_bitmask<0,  0,  0,  0,  1,  1,  1,  1,    0,  0,  0,  0,  1,  1,  1,  1>();
 
-    ri512 const     perm4 = make_permute<2,  3,  0,  1,  6,  7,  4,  5,   10, 11,  8,  9, 14, 15, 12, 13>();
+    integer_512 const     perm4 = make_permute<2,  3,  0,  1,  6,  7,  4,  5,   10, 11,  8,  9, 14, 15, 12, 13>();
     constexpr m512  mask4 = make_bitmask<0,  0,  1,  1,  0,  0,  1,  1,    0,  0,  1,  1,  0,  0,  1,  1>();
 
-    ri512 const     perm5 = make_permute<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
+    integer_512 const     perm5 = make_permute<1,  0,  3,  2,  5,  4,  7,  6,    9,  8, 11, 10, 13, 12, 15, 14>();
     constexpr m512  mask5 = make_bitmask<0,  1,  0,  1,  0,  1,  0,  1,    0,  1,  0,  1,  0,  1,  0,  1>();
 
     vals = compare_with_exchange(vals, perm0, mask0);
@@ -713,27 +635,27 @@ sort_two_lanes_of_8(rf512 vals)
 }
 
 KEWB_FORCE_INLINE __m512
-sort_two_lanes_of_7(rf512 vals)
+sort_two_lanes_of_7(float_512 vals)
 {
     //- Precompute the permutations and bitmasks for the 6 stages of this bitonic sorting sequence.
     //                                   0   1   2   3   4   5   6   7     0   1   2   3   4   5   6   7
     //                                  ---------------------------------------------------
-    ri512 const     perm0 = make_permute<4,  5,  6,  3,  0,  1,  2,  7,   12, 13, 14, 11,  8,  9, 10, 15>();
+    integer_512 const     perm0 = make_permute<4,  5,  6,  3,  0,  1,  2,  7,   12, 13, 14, 11,  8,  9, 10, 15>();
     constexpr m512  mask0 = make_bitmask<0,  0,  0,  0,  1,  1,  1,  0,    0,  0,  0,  0,  1,  1,  1,  0>();
 
-    ri512 const     perm1 = make_permute<2,  3,  0,  1,  6,  5,  4,  7,   10, 11,  8,  9, 14, 13, 12, 15>();
+    integer_512 const     perm1 = make_permute<2,  3,  0,  1,  6,  5,  4,  7,   10, 11,  8,  9, 14, 13, 12, 15>();
     constexpr m512  mask1 = make_bitmask<0,  0,  1,  1,  0,  0,  1,  0,   0,  0,  1,  1,  0,  0,  1,  0>();
 
-    ri512 const     perm2 = make_permute<1,  0,  4,  5,  2,  3,  6,  7,    9,  8, 12, 13, 10, 11, 14, 15>();
+    integer_512 const     perm2 = make_permute<1,  0,  4,  5,  2,  3,  6,  7,    9,  8, 12, 13, 10, 11, 14, 15>();
     constexpr m512  mask2 = make_bitmask<0,  1,  0,  0,  1,  1,  0,  0,    0,  1,  0,  0,  1,  1,  0,  0>();
 
-    ri512 const     perm3 = make_permute<0,  1,  3,  2,  5,  4,  6,  7,    8,  9, 11, 10, 13, 12, 14, 15>();
+    integer_512 const     perm3 = make_permute<0,  1,  3,  2,  5,  4,  6,  7,    8,  9, 11, 10, 13, 12, 14, 15>();
     constexpr m512  mask3 = make_bitmask<0,  0,  0,  1,  0,  1,  0,  0,    0,  0,  0,  1,  0,  1,  0,  0>();
 
-    ri512 const     perm4 = make_permute<0,  4,  2,  6,  1,  5,  3,  7,    8, 12, 10, 14,  9, 13, 11, 15>();
+    integer_512 const     perm4 = make_permute<0,  4,  2,  6,  1,  5,  3,  7,    8, 12, 10, 14,  9, 13, 11, 15>();
     constexpr m512  mask4 = make_bitmask<0,  0,  0,  0,  1,  0,  1,  0,    0,  0,  0,  0,  1,  0,  1,  0>();
 
-    ri512 const     perm5 = make_permute<0,  2,  1,  4,  3,  6,  5,  7,    8, 10,  9, 12, 11, 14, 13, 15>();
+    integer_512 const     perm5 = make_permute<0,  2,  1,  4,  3,  6,  5,  7,    8, 10,  9, 12, 11, 14, 13, 15>();
     constexpr m512  mask5 = make_bitmask<0,  0,  1,  0,  1,  0,  1,  0,    0,  0,  1,  0,  1,  0,  1,  0>();
 
     vals = compare_with_exchange(vals, perm0, mask0);
@@ -745,76 +667,6 @@ sort_two_lanes_of_7(rf512 vals)
 
     return vals;
 }
-
-/*
-KEWB_FORCE_INLINE __m256
-sort_two_lanes_of_8(rf256 vals)
-{
-    //- Precompute the permutations and bitmasks for the 6 stages of this bitonic sorting sequence.
-    //                                   0   1   2   3   4   5   6   7
-    //                                  ---------------------------------------------------
-    ri256 const     perm0 = make_permute<1,  0,  3,  2,  5,  4,  7,  6>();
-    constexpr m256  mask0 = make_bitmask<0,  1,  0,  1,  0,  1,  0,  1>();
-
-    ri256 const     perm1 = make_permute<3,  2,  1,  0,  7,  6,  5,  4>();
-    constexpr m256  mask1 = make_bitmask<0,  0,  1,  1,  0,  0,  1,  1>();
-
-    ri256 const     perm2 = make_permute<1,  0,  3,  2,  5,  4,  7,  6>();
-    constexpr m256  mask2 = make_bitmask<0,  1,  0,  1,  0,  1,  0,  1>();
-
-    ri256 const     perm3 = make_permute<7,  6,  5,  4,  3,  2,  1,  0>();
-    constexpr m256  mask3 = make_bitmask<0,  0,  0,  0,  1,  1,  1,  1>();
-
-    ri256 const     perm4 = make_permute<2,  3,  0,  1,  6,  7,  4,  5>();
-    constexpr m256  mask4 = make_bitmask<0,  0,  1,  1,  0,  0,  1,  1>();
-
-    ri256 const     perm5 = make_permute<1,  0,  3,  2,  5,  4,  7,  6>();
-    constexpr m256  mask5 = make_bitmask<0,  1,  0,  1,  0,  1,  0,  1>();
-
-    vals = compare_with_exchange(vals, perm0, mask0);
-    vals = compare_with_exchange(vals, perm1, mask1);
-    vals = compare_with_exchange(vals, perm2, mask2);
-    vals = compare_with_exchange(vals, perm3, mask3);
-    vals = compare_with_exchange(vals, perm4, mask4);
-    vals = compare_with_exchange(vals, perm5, mask5);
-
-    return vals;
-}
-
-KEWB_FORCE_INLINE __m256
-sort_two_lanes_of_7(rf256 vals)
-{
-    //- Precompute the permutations and bitmasks for the 6 stages of this bitonic sorting sequence.
-    //                                   0   1   2   3   4   5   6   7
-    //                                  ---------------------------------------------------
-    ri256 const     perm0 = make_permute<4,  5,  6,  3,  0,  1,  2,  7>();
-    constexpr m256  mask0 = make_bitmask<0,  0,  0,  0,  1,  1,  1,  0>();
-
-    ri256 const     perm1 = make_permute<2,  3,  0,  1,  6,  5,  4,  7>();
-    constexpr m256  mask1 = make_bitmask<0,  0,  1,  1,  0,  0,  1,  0>();
-
-    ri256 const     perm2 = make_permute<1,  0,  4,  5,  2,  3,  6,  7>();
-    constexpr m256  mask2 = make_bitmask<0,  1,  0,  0,  1,  1,  0,  0>();
-
-    ri256 const     perm3 = make_permute<0,  1,  3,  2,  5,  4,  6,  7>();
-    constexpr m256  mask3 = make_bitmask<0,  0,  0,  1,  0,  1,  0,  0>();
-
-    ri256 const     perm4 = make_permute<0,  4,  2,  6,  1,  5,  3,  7>();
-    constexpr m256  mask4 = make_bitmask<0,  0,  0,  0,  1,  0,  1,  0>();
-
-    ri256 const     perm5 = make_permute<0,  2,  1,  4,  3,  6,  5,  7>();
-    constexpr m256  mask5 = make_bitmask<0,  0,  1,  0,  1,  0,  1,  0>();
-
-    vals = compare_with_exchange(vals, perm0, mask0);
-    vals = compare_with_exchange(vals, perm1, mask1);
-    vals = compare_with_exchange(vals, perm2, mask2);
-    vals = compare_with_exchange(vals, perm3, mask3);
-    vals = compare_with_exchange(vals, perm4, mask4);
-    vals = compare_with_exchange(vals, perm5, mask5);
-
-    return vals;
-}
-*/
 
 }       //- simd namespace
 #endif  //- KEWB_SIMD_HPP_DEFINED
