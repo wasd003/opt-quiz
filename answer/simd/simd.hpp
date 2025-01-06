@@ -565,21 +565,18 @@ KEWB_FORCE_INLINE void inplace_shift_lo_with_carry(float_512& lo, float_512& hi)
 /**
  * SEQ: 13
  * @fused_multiply_add: answer = r0 * r1 + acc
+ * @minimum: return the minimum value of r0 and r1 elementwise
+ * @maximum: return the maxmum value of r0 and r1 elementwise
  */
 KEWB_FORCE_INLINE float_512 fused_multiply_add(float_512 r0, float_512 r1, float_512 acc) {
     return _mm512_fmadd_ps(r0, r1, acc);
 }
 
-
-KEWB_FORCE_INLINE float_512
-minimum(float_512 r0, float_512 r1)
-{
+KEWB_FORCE_INLINE float_512 minimum(float_512 r0, float_512 r1) {
     return _mm512_min_ps(r0, r1);
 }
 
-float_512
-KEWB_FORCE_INLINE maximum(float_512 r0, float_512 r1)
-{
+KEWB_FORCE_INLINE float_512 maximum(float_512 r0, float_512 r1) {
     return _mm512_max_ps(r0, r1);
 }
 

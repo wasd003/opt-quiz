@@ -67,16 +67,14 @@ int main() {
 #endif
 
 
-    std::vector<float> data0(16), data1(16);
+    std::vector<float> data0(16), data1(16), data2(16, 1.0f);
     std::iota(data0.begin(), data0.end(), 0.0f);
     std::iota(data1.begin(), data1.end(), 16.0f);
     auto lo = simd::load_from(data0.data());
     auto hi = simd::load_from(data1.data());
-    PRINT_REG(lo);
-    PRINT_REG(hi);
-    simd::inplace_shift_lo_with_carry<2>(lo, hi);
-    PRINT_REG(lo);
-    PRINT_REG(hi);
+    auto zero = simd::load_from(data2.data());
+    auto ans = simd::fused_multiply_add(lo, hi, zero);
+    PRINT_REG(ans);
 
 
     return 0;
