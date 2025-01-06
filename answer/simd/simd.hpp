@@ -263,7 +263,7 @@ KEWB_FORCE_INLINE integer_512 rotate(integer_512 r0)
 }
 
 template<int BIAS, uint32_t MASK>
-KEWB_FORCE_INLINE __m512i
+KEWB_FORCE_INLINE integer_512
 make_shift_permutation()
 {
     constexpr int32_t   a = ((BIAS + 0)  % 16) | ((MASK & 1u)        ? 0x10 : 0);
@@ -541,7 +541,6 @@ KEWB_FORCE_INLINE float_512 shift_hi_with_carry(float_512 lo, float_512 hi) {
 }
 
 
-
 /**
  * SEQ: 12
  * @in_place_shift_lo_with_carry: same with shift_lo_with_carry, but in place
@@ -562,58 +561,34 @@ KEWB_FORCE_INLINE void inplace_shift_lo_with_carry(float_512& lo, float_512& hi)
 
 
 
-template<int S>
-KEWB_FORCE_INLINE __m512
-shift_up_and_fill(__m512 r0, float fill)
-{
-    return blend(rotate_hi<S>(r0), load_value(fill), shift_up_blend_mask<S>());
-}
 
-template<int S>
-KEWB_FORCE_INLINE __m512
-shift_down_and_fill(__m512 r0, float fill)
-{
-    return blend(rotate_lo<S>(r0), load_value(fill), shift_down_blend_mask<S>());
-}
-
-KEWB_FORCE_INLINE __m512
-fused_multiply_add(__m512 r0, __m512 r1, __m512 acc)
-{
+/**
+ * SEQ: 13
+ * @fused_multiply_add: answer = r0 * r1 + acc
+ */
+KEWB_FORCE_INLINE float_512 fused_multiply_add(float_512 r0, float_512 r1, float_512 acc) {
     return _mm512_fmadd_ps(r0, r1, acc);
 }
 
 
-KEWB_FORCE_INLINE __m512
-mask_permute(__m512 r0, __m512 r1, __m512i perm, uint32_t mask)
-{
-    return _mm512_mask_permutexvar_ps(r0, (__mmask16) mask, perm, r1);
-}
-
-KEWB_FORCE_INLINE __m512
-mask_permute2(__m512 r0, __m512 r1, __m512i perm, uint32_t mask)
-{
-    return _mm512_mask_permutex2var_ps(r0, (__mmask16) mask, perm, r1);
-}
-
-
-KEWB_FORCE_INLINE __m512
-minimum(__m512 r0, __m512 r1)
+KEWB_FORCE_INLINE float_512
+minimum(float_512 r0, float_512 r1)
 {
     return _mm512_min_ps(r0, r1);
 }
 
-__m512
-KEWB_FORCE_INLINE maximum(__m512 r0, __m512 r1)
+float_512
+KEWB_FORCE_INLINE maximum(float_512 r0, float_512 r1)
 {
     return _mm512_max_ps(r0, r1);
 }
 
-KEWB_FORCE_INLINE __m512
-compare_with_exchange(__m512 vals, __m512i perm, uint32_t mask)
+KEWB_FORCE_INLINE float_512
+compare_with_exchange(float_512 vals, integer_512 perm, uint32_t mask)
 {
-    __m512  exch = permute(vals, perm);
-    __m512  vmin = minimum(vals, exch);
-    __m512  vmax = maximum(vals, exch);
+    float_512  exch = permute(vals, perm);
+    float_512  vmin = minimum(vals, exch);
+    float_512  vmax = maximum(vals, exch);
 
     return blend(vmin, vmax, mask);
 }
@@ -636,7 +611,7 @@ make_bitmask()
             (M << 12) | (N << 13) | (O << 14) | (P << 15));
 }
 
-KEWB_FORCE_INLINE __m512
+KEWB_FORCE_INLINE float_512
 sort_two_lanes_of_8(float_512 vals)
 {
     //- Precompute the permutations and bitmasks for the 6 stages of this bitonic sorting sequence.
@@ -670,7 +645,7 @@ sort_two_lanes_of_8(float_512 vals)
     return vals;
 }
 
-KEWB_FORCE_INLINE __m512
+KEWB_FORCE_INLINE float_512
 sort_two_lanes_of_7(float_512 vals)
 {
     //- Precompute the permutations and bitmasks for the 6 stages of this bitonic sorting sequence.
