@@ -264,20 +264,27 @@ KEWB_FORCE_INLINE float_512 masked_load_from(const float* psrc, float immediate_
 }
 
 
-KEWB_FORCE_INLINE void
-store_to_address(void* pdst, __m512i r)
-{
+/**
+ * SEQ: 3
+ * @store_to
+ * store data from SIMD register to memory
+ */
+KEWB_FORCE_INLINE void store_to(void* pdst, integer_512 r) {
     _mm512_mask_storeu_epi32(pdst, (__mmask16) 0xFFFFu, r);
 }
 
-KEWB_FORCE_INLINE void
-store_to_address(void* pdst, __m512 r)
-{
+KEWB_FORCE_INLINE void store_to(void* pdst, float_512 r) {
     _mm512_mask_storeu_ps(pdst, (__mmask16) 0xFFFFu, r);
 }
 
-KEWB_FORCE_INLINE void
-masked_store_to(void* pdst, __m512 r, m512 mask)
+/**
+ * SEQ: 4
+ * @masked_store_to
+ * store data to memory based on mask
+ *    - if mask bit is 1, store from SIMD register
+ *    - if mask bit is 0, leave memory unchanged
+ */
+KEWB_FORCE_INLINE void masked_store_to(void* pdst, float_512 r, uint32_t mask)
 {
     _mm512_mask_storeu_ps(pdst, (__mmask16) mask, r);
 }

@@ -67,14 +67,11 @@ int main() {
 #endif
 
     std::vector<float> data0 {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    std::vector<float> data1(16, 16);
-    std::vector<int32_t> data2(16, 16);
-    auto r0 = simd::masked_load_from(data0.data(), 42.0f, (1 << 1));
-    auto r1 = simd::load_from(data1.data());
-    auto r2 = simd::load_from(data2.data());
-    PRINT_REG(r0);
-    PRINT_REG(r1);
-    PRINT_REG(r2);
+    auto r0 = simd::load_value(42.0f);
+    simd::masked_store_to(data0.data(), r0, 1<<1);
+    for (int i = 0; i < 16; i++) {
+        std::cout << data0[i] << " ";
+    }
 
     return 0;
 }
