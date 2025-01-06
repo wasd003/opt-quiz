@@ -68,10 +68,9 @@ int main() {
 
     std::vector<float> data0 {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
     auto r0 = simd::load_value(42.0f);
-    simd::masked_store_to(data0.data(), r0, 1<<1);
-    for (int i = 0; i < 16; i++) {
-        std::cout << data0[i] << " ";
-    }
+    auto r1 = simd::load_value(1.0f);
+    auto ans = simd::blend(r0, r1, 0x1);
+    PRINT_REG(ans);
 
     return 0;
 }

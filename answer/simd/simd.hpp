@@ -222,6 +222,8 @@ print_mask(char const* pname, __m256i mask, int)
  * SEQ: 0
  * @load_value
  * load a immediate value into SIMD register
+ * @load_values
+ * load a set of immediate values into SIMD register
  */
 KEWB_FORCE_INLINE float_512 load_value(float immediate_val) {
     return _mm512_set1_ps(immediate_val);
@@ -230,6 +232,27 @@ KEWB_FORCE_INLINE float_512 load_value(float immediate_val) {
 KEWB_FORCE_INLINE integer_512 load_value(int32_t immediate_val) {
     return _mm512_set1_epi32(immediate_val);
 }
+
+template<int A, int B, int C, int D, int E, int F, int G, int H,
+         int I, int J, int K, int L, int M, int N, int O, int P>
+KEWB_FORCE_INLINE integer_512
+load_values() {
+    return _mm512_setr_epi32(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
+}
+
+KEWB_FORCE_INLINE integer_512
+load_values(int a, int b, int c, int d, int e, int f, int g, int h,
+            int i, int j, int k, int l, int m, int n, int o, int p) {
+    return _mm512_setr_epi32(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p);
+}
+
+KEWB_FORCE_INLINE float_512
+load_values(float a, float b, float c, float d, float e, float f, float g, float h,
+            float i, float j, float k, float l, float m, float n, float o, float p)
+{
+    return _mm512_setr_ps(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p);
+}
+
 
 /**
  * SEQ: 1
@@ -289,35 +312,31 @@ KEWB_FORCE_INLINE void masked_store_to(void* pdst, float_512 r, uint32_t mask)
     _mm512_mask_storeu_ps(pdst, (__mmask16) mask, r);
 }
 
-KEWB_FORCE_INLINE __m512
-load_values(float a, float b, float c, float d, float e, float f, float g, float h,
-            float i, float j, float k, float l, float m, float n, float o, float p)
-{
-    return _mm512_setr_ps(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p);
-}
-
-template<int A, int B, int C, int D, int E, int F, int G, int H,
-         int I, int J, int K, int L, int M, int N, int O, int P>
-KEWB_FORCE_INLINE __m512i
-load_values()
-{
-    return _mm512_setr_epi32(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
-}
-
-KEWB_FORCE_INLINE __m512i
-load_values(int a, int b, int c, int d, int e, int f, int g, int h,
-            int i, int j, int k, int l, int m, int n, int o, int p)
-{
-    return _mm512_setr_epi32(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p);
-}
-
-
-KEWB_FORCE_INLINE __m512
-blend(__m512 r0, __m512 r1, uint32_t mask)
-{
+/**
+ * SEQ: 5
+ * @blend
+ * blend data from two SIMD registers based on mask
+ *    - if mask bit is 1, use data from r1
+ *    - if mask bit is 0, use data from r0
+ */
+KEWB_FORCE_INLINE float_512 blend(float_512 r0, float_512 r1, uint32_t mask) {
     return _mm512_mask_blend_ps((__mmask16) mask, r0, r1);
 }
 
+
+/**
+ * SEQ: 6
+ * @permute
+ * export answer register based on r and perm
+ *      if perm[i] == k, then answer[i] = r[k]
+ */
+KEWB_FORCE_INLINE float_512 permute(float_512 r, integer_512 perm) {
+    return _mm512_permutexvar_ps(perm, r);
+}
+
+KEWB_FORCE_INLINE integer_512 permute(integer_512 r, integer_512 perm) {
+    return _mm512_permutexvar_epi32(perm, r);
+}
 
 template<int A, int B, int C, int D, int E, int F, int G, int H,
          int I, int J, int K, int L, int M, int N, int O, int P>
@@ -327,17 +346,9 @@ permute(__m512i r0)
     return _mm512_permutexvar_epi32(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
 }
 
-KEWB_FORCE_INLINE __m512
-permute(__m512 r, __m512i perm)
-{
-    return _mm512_permutexvar_ps(perm, r);
-}
 
-KEWB_FORCE_INLINE __m512i
-permute(__m512i r, __m512i perm)
-{
-    return _mm512_permutexvar_epi32(perm, r);
-}
+
+
 
 template<int BIAS, uint32_t MASK>
 KEWB_FORCE_INLINE __m512i
