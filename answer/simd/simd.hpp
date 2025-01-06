@@ -8,24 +8,17 @@
 
 class simd {
 public:
-    using rd128 = __m128d;
-    using rf128 = __m128;
-    using ri128 = __m128i;
+    using double_128 = __m128d;
+    using float_128 = __m128;
+    using integer_128 = __m128i;
 
-    using rd256 = __m256d;
-    using rf256 = __m256;
-    using ri256 = __m256i;
+    using double_256 = __m256d;
+    using float_256 = __m256;
+    using integer_256 = __m256i;
 
     using double_512 = __m512d;
     using float_512 = __m512;
     using integer_512 = __m512i;
-
-    using r512d = __m512d;
-    using r512f = __m512;
-    using r512i = __m512i;
-
-    using m256 = __m256i;
-    using m512 = uint32_t;
 
 private:
     #define force_inline __attribute__((__always_inline__)) inline
@@ -484,32 +477,32 @@ public:
         //                                  ---------------------------------------------------
         integer_512 const perm0 =
             make_perm<1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14>();
-        constexpr m512 mask0 =
+        constexpr uint32_t mask0 =
             make_bitmask<0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1>();
 
         integer_512 const perm1 =
             make_perm<3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12>();
-        constexpr m512 mask1 =
+        constexpr uint32_t mask1 =
             make_bitmask<0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1>();
 
         integer_512 const perm2 =
             make_perm<1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14>();
-        constexpr m512 mask2 =
+        constexpr uint32_t mask2 =
             make_bitmask<0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1>();
 
         integer_512 const perm3 =
             make_perm<7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8>();
-        constexpr m512 mask3 =
+        constexpr uint32_t mask3 =
             make_bitmask<0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1>();
 
         integer_512 const perm4 =
             make_perm<2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13>();
-        constexpr m512 mask4 =
+        constexpr uint32_t mask4 =
             make_bitmask<0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1>();
 
         integer_512 const perm5 =
             make_perm<1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14>();
-        constexpr m512 mask5 =
+        constexpr uint32_t mask5 =
             make_bitmask<0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1>();
 
         vals = compare_with_exchange(vals, perm0, mask0);
@@ -528,32 +521,32 @@ public:
         //                                  ---------------------------------------------------
         integer_512 const perm0 =
             make_perm<4, 5, 6, 3, 0, 1, 2, 7, 12, 13, 14, 11, 8, 9, 10, 15>();
-        constexpr m512 mask0 =
+        constexpr uint32_t mask0 =
             make_bitmask<0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0>();
 
         integer_512 const perm1 =
             make_perm<2, 3, 0, 1, 6, 5, 4, 7, 10, 11, 8, 9, 14, 13, 12, 15>();
-        constexpr m512 mask1 =
+        constexpr uint32_t mask1 =
             make_bitmask<0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0>();
 
         integer_512 const perm2 =
             make_perm<1, 0, 4, 5, 2, 3, 6, 7, 9, 8, 12, 13, 10, 11, 14, 15>();
-        constexpr m512 mask2 =
+        constexpr uint32_t mask2 =
             make_bitmask<0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0>();
 
         integer_512 const perm3 =
             make_perm<0, 1, 3, 2, 5, 4, 6, 7, 8, 9, 11, 10, 13, 12, 14, 15>();
-        constexpr m512 mask3 =
+        constexpr uint32_t mask3 =
             make_bitmask<0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0>();
 
         integer_512 const perm4 =
             make_perm<0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15>();
-        constexpr m512 mask4 =
+        constexpr uint32_t mask4 =
             make_bitmask<0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0>();
 
         integer_512 const perm5 =
             make_perm<0, 2, 1, 4, 3, 6, 5, 7, 8, 10, 9, 12, 11, 14, 13, 15>();
-        constexpr m512 mask5 =
+        constexpr uint32_t mask5 =
             make_bitmask<0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0>();
 
         vals = compare_with_exchange(vals, perm0, mask0);
@@ -576,45 +569,45 @@ public:
     #define PRINT_MASK16(M) simd::print_mask(#M, M, 16)
     #define PRINT_LINE() simd::printf("\n");
 
-    static void print_reg(char const* pname, rd128 r) {
+    static void print_reg(char const* pname, double_128 r) {
         double vals[2];
 
         _mm_storeu_pd(&vals[0], r);
         print_vals(pname, vals, 2);
     }
 
-    static void print_reg(char const* pname, rf128 r) {
+    static void print_reg(char const* pname, float_128 r) {
         float vals[4];
 
         _mm_storeu_ps(&vals[0], r);
         print_vals(pname, vals, 4);
     }
 
-    static void print_reg(char const* pname, ri128 r) {
+    static void print_reg(char const* pname, integer_128 r) {
         int32_t vals[4];
 
         _mm_storeu_epi32(&vals[0], r);
         print_vals(pname, vals, 4);
     }
 
-    static void print_reg(char const* pname, rd256 r) {
+    static void print_reg(char const* pname, double_256 r) {
         double vals[4];
 
         _mm256_storeu_pd(&vals[0], r);
         print_vals(pname, vals, 4);
     }
 
-    static void print_reg(char const* pname, rf256 r) {
+    static void print_reg(char const* pname, float_256 r) {
         float vals[8];
 
         _mm256_storeu_ps(&vals[0], r);
         print_vals(pname, vals, 8);
     }
 
-    static void print_reg(char const* pname, ri256 r) {
+    static void print_reg(char const* pname, integer_256 r) {
         int32_t vals[8];
 
-        _mm256_storeu_si256((ri256*)&vals[0], r);
+        _mm256_storeu_si256((integer_256*)&vals[0], r);
         print_vals(pname, vals, 8);
     }
 
