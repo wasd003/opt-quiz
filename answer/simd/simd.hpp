@@ -218,6 +218,51 @@ print_mask(char const* pname, __m256i mask, int)
 #define PRINT_LINE()        printf("\n");
 
 
+template<int R>
+auto consteval calc_offset() {
+    constexpr int S = (R > 0) ? (16 - (R % 16)) : -R;
+    constexpr int A = (S + 0) % 16;
+    constexpr int B = (S + 1) % 16;
+    constexpr int C = (S + 2) % 16;
+    constexpr int D = (S + 3) % 16;
+    constexpr int E = (S + 4) % 16;
+    constexpr int F = (S + 5) % 16;
+    constexpr int G = (S + 6) % 16;
+    constexpr int H = (S + 7) % 16;
+    constexpr int I = (S + 8) % 16;
+    constexpr int J = (S + 9) % 16;
+    constexpr int K = (S + 10) % 16;
+    constexpr int L = (S + 11) % 16;
+    constexpr int M = (S + 12) % 16;
+    constexpr int N = (S + 13) % 16;
+    constexpr int O = (S + 14) % 16;
+    constexpr int P = (S + 15) % 16;
+    return std::make_tuple(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P);
+}
+
+template<int R>
+KEWB_FORCE_INLINE float_512 rotate(float_512 r0)
+{
+    if constexpr ((R % 16) == 0) {
+        return r0;
+    } else {
+        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = calc_offset<R>();
+        return _mm512_permutexvar_ps(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
+    }
+}
+
+template<int R>
+KEWB_FORCE_INLINE integer_512 rotate(integer_512 r0)
+{
+    if constexpr ((R % 16) == 0) {
+        return r0;
+    } else {
+        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = calc_offset<R>();
+        return _mm512_permutexvar_epi32(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
+    }
+}
+
+
 /**
  * SEQ: 0
  * @load_value
@@ -404,50 +449,6 @@ make_shift_permutation()
     constexpr int32_t   p = ((BIAS + 15) % 16) | ((MASK & 1u << 15u) ? 0x10 : 0);
 
     return _mm512_setr_epi32(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
-}
-
-template<int R>
-auto consteval calc_offset() {
-    constexpr int S = (R > 0) ? (16 - (R % 16)) : -R;
-    constexpr int A = (S + 0) % 16;
-    constexpr int B = (S + 1) % 16;
-    constexpr int C = (S + 2) % 16;
-    constexpr int D = (S + 3) % 16;
-    constexpr int E = (S + 4) % 16;
-    constexpr int F = (S + 5) % 16;
-    constexpr int G = (S + 6) % 16;
-    constexpr int H = (S + 7) % 16;
-    constexpr int I = (S + 8) % 16;
-    constexpr int J = (S + 9) % 16;
-    constexpr int K = (S + 10) % 16;
-    constexpr int L = (S + 11) % 16;
-    constexpr int M = (S + 12) % 16;
-    constexpr int N = (S + 13) % 16;
-    constexpr int O = (S + 14) % 16;
-    constexpr int P = (S + 15) % 16;
-    return std::make_tuple(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P);
-}
-
-template<int R>
-KEWB_FORCE_INLINE float_512 rotate(float_512 r0)
-{
-    if constexpr ((R % 16) == 0) {
-        return r0;
-    } else {
-        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = calc_offset<R>();
-        return _mm512_permutexvar_ps(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
-    }
-}
-
-template<int R>
-KEWB_FORCE_INLINE integer_512 rotate(integer_512 r0)
-{
-    if constexpr ((R % 16) == 0) {
-        return r0;
-    } else {
-        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = calc_offset<R>();
-        return _mm512_permutexvar_epi32(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
-    }
 }
 
 /**
