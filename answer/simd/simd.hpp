@@ -262,6 +262,30 @@ KEWB_FORCE_INLINE integer_512 rotate(integer_512 r0)
     }
 }
 
+template<int BIAS, uint32_t MASK>
+KEWB_FORCE_INLINE __m512i
+make_shift_permutation()
+{
+    constexpr int32_t   a = ((BIAS + 0)  % 16) | ((MASK & 1u)        ? 0x10 : 0);
+    constexpr int32_t   b = ((BIAS + 1)  % 16) | ((MASK & 1u << 1u)  ? 0x10 : 0);
+    constexpr int32_t   c = ((BIAS + 2)  % 16) | ((MASK & 1u << 2u)  ? 0x10 : 0);
+    constexpr int32_t   d = ((BIAS + 3)  % 16) | ((MASK & 1u << 3u)  ? 0x10 : 0);
+    constexpr int32_t   e = ((BIAS + 4)  % 16) | ((MASK & 1u << 4u)  ? 0x10 : 0);
+    constexpr int32_t   f = ((BIAS + 5)  % 16) | ((MASK & 1u << 5u)  ? 0x10 : 0);
+    constexpr int32_t   g = ((BIAS + 6)  % 16) | ((MASK & 1u << 6u)  ? 0x10 : 0);
+    constexpr int32_t   h = ((BIAS + 7)  % 16) | ((MASK & 1u << 7u)  ? 0x10 : 0);
+    constexpr int32_t   i = ((BIAS + 8)  % 16) | ((MASK & 1u << 8u)  ? 0x10 : 0);
+    constexpr int32_t   j = ((BIAS + 9)  % 16) | ((MASK & 1u << 9u)  ? 0x10 : 0);
+    constexpr int32_t   k = ((BIAS + 10) % 16) | ((MASK & 1u << 10u) ? 0x10 : 0);
+    constexpr int32_t   l = ((BIAS + 11) % 16) | ((MASK & 1u << 11u) ? 0x10 : 0);
+    constexpr int32_t   m = ((BIAS + 12) % 16) | ((MASK & 1u << 12u) ? 0x10 : 0);
+    constexpr int32_t   n = ((BIAS + 13) % 16) | ((MASK & 1u << 13u) ? 0x10 : 0);
+    constexpr int32_t   o = ((BIAS + 14) % 16) | ((MASK & 1u << 14u) ? 0x10 : 0);
+    constexpr int32_t   p = ((BIAS + 15) % 16) | ((MASK & 1u << 15u) ? 0x10 : 0);
+
+    return _mm512_setr_epi32(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
+}
+
 
 /**
  * SEQ: 0
@@ -427,29 +451,6 @@ make_perm()
 
 
 
-template<int BIAS, uint32_t MASK>
-KEWB_FORCE_INLINE __m512i
-make_shift_permutation()
-{
-    constexpr int32_t   a = ((BIAS + 0)  % 16) | ((MASK & 1u)        ? 0x10 : 0);
-    constexpr int32_t   b = ((BIAS + 1)  % 16) | ((MASK & 1u << 1u)  ? 0x10 : 0);
-    constexpr int32_t   c = ((BIAS + 2)  % 16) | ((MASK & 1u << 2u)  ? 0x10 : 0);
-    constexpr int32_t   d = ((BIAS + 3)  % 16) | ((MASK & 1u << 3u)  ? 0x10 : 0);
-    constexpr int32_t   e = ((BIAS + 4)  % 16) | ((MASK & 1u << 4u)  ? 0x10 : 0);
-    constexpr int32_t   f = ((BIAS + 5)  % 16) | ((MASK & 1u << 5u)  ? 0x10 : 0);
-    constexpr int32_t   g = ((BIAS + 6)  % 16) | ((MASK & 1u << 6u)  ? 0x10 : 0);
-    constexpr int32_t   h = ((BIAS + 7)  % 16) | ((MASK & 1u << 7u)  ? 0x10 : 0);
-    constexpr int32_t   i = ((BIAS + 8)  % 16) | ((MASK & 1u << 8u)  ? 0x10 : 0);
-    constexpr int32_t   j = ((BIAS + 9)  % 16) | ((MASK & 1u << 9u)  ? 0x10 : 0);
-    constexpr int32_t   k = ((BIAS + 10) % 16) | ((MASK & 1u << 10u) ? 0x10 : 0);
-    constexpr int32_t   l = ((BIAS + 11) % 16) | ((MASK & 1u << 11u) ? 0x10 : 0);
-    constexpr int32_t   m = ((BIAS + 12) % 16) | ((MASK & 1u << 12u) ? 0x10 : 0);
-    constexpr int32_t   n = ((BIAS + 13) % 16) | ((MASK & 1u << 13u) ? 0x10 : 0);
-    constexpr int32_t   o = ((BIAS + 14) % 16) | ((MASK & 1u << 14u) ? 0x10 : 0);
-    constexpr int32_t   p = ((BIAS + 15) % 16) | ((MASK & 1u << 15u) ? 0x10 : 0);
-
-    return _mm512_setr_epi32(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p);
-}
 
 /**
  * SEQ: 9
