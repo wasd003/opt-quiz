@@ -504,13 +504,13 @@ KEWB_FORCE_INLINE integer_512 rotate_hi(integer_512 r0) {
  *      - leave the empty slots with 0
  */
 template<int S>
-KEWB_FORCE_INLINE float_512 shift_hi(float_512 r0) {
-    return blend(load_value(static_cast<float>(0)), rotate_hi<S>(r0), shift_up_blend_mask<S>());
+KEWB_FORCE_INLINE float_512 shift_lo(float_512 r0) {
+    return blend(rotate_lo<S>(r0), load_value(static_cast<float>(0)), shift_down_blend_mask<S>());
 }
 
 template<int S>
-KEWB_FORCE_INLINE float_512 shift_lo(float_512 r0) {
-    return blend(rotate_lo<S>(r0), load_value(static_cast<float>(0)), shift_down_blend_mask<S>());
+KEWB_FORCE_INLINE float_512 shift_hi(float_512 r0) {
+    return blend(load_value(static_cast<float>(0)), rotate_hi<S>(r0), shift_up_blend_mask<S>());
 }
 
 
