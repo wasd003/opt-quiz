@@ -219,7 +219,7 @@ print_mask(char const* pname, __m256i mask, int)
 
 
 template<int R>
-auto consteval calc_offset() {
+auto consteval rotate_offset() {
     constexpr int S = (R > 0) ? (16 - (R % 16)) : -R;
     constexpr int A = (S + 0) % 16;
     constexpr int B = (S + 1) % 16;
@@ -246,7 +246,7 @@ KEWB_FORCE_INLINE float_512 rotate(float_512 r0)
     if constexpr ((R % 16) == 0) {
         return r0;
     } else {
-        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = calc_offset<R>();
+        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = rotate_offset<R>();
         return _mm512_permutexvar_ps(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
     }
 }
@@ -257,7 +257,7 @@ KEWB_FORCE_INLINE integer_512 rotate(integer_512 r0)
     if constexpr ((R % 16) == 0) {
         return r0;
     } else {
-        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = calc_offset<R>();
+        const auto [A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P] = rotate_offset<R>();
         return _mm512_permutexvar_epi32(_mm512_setr_epi32(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P), r0);
     }
 }
