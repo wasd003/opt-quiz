@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <vector>
 #include <queue>
@@ -12,6 +14,7 @@
 #include <random>
 
 #define UNUSED(x) (void)(x)
+#define force_inline __attribute__((__always_inline__))
 
 static inline std::mt19937 generator(std::chrono::system_clock::now().time_since_epoch().count());
 
@@ -107,3 +110,28 @@ public:
         ::operator delete[]( allocatedPointer, ALIGNMENT );
     }
 };
+
+static inline void print_vec(auto&& data, auto&& name) {
+    std::cout << name << ": ";
+    std::for_each(data.begin(), data.end(), [](auto x) { std::cout << x << " "; });
+    std::cout << std::endl;
+}
+#define PRINT_VEC(data) print_vec(data, #data)
+
+static inline bool check_vec_eq(const std::vector<float>& v0, const std::vector<float>& v1) {
+    if (v0.size() != v1.size()) {
+        std::cout << "size mismatch" << v0.size() << "-" << v1.size() << " \n";
+    }
+    const auto [v0it, v1it] = std::mismatch(v0.begin(), v0.end(), v1.begin(), [](float a, float b) {
+        return std::abs(a - b) < 1e-5;
+    });
+    if (v0it == v0.end()) {
+        std::cout << "PASS" << std::endl;
+    } else {
+        std::cout << "FAIL" << std::endl;
+        std::cout << "Index: " << std::distance(v0.begin(), v0it) << std::endl;
+        std::cout << "v0: " << *v0it << " v1: " << *v1it << std::endl;
+    }
+    return true;
+
+}

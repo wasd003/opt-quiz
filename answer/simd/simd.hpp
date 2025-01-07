@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <tuple>
 #include <type_traits>
+#include <quiz/base.h>
 
 class simd {
 public:
@@ -21,8 +22,6 @@ public:
     using integer_512 = __m512i;
 
 private:
-    #define force_inline __attribute__((__always_inline__))
-
     template <int R>
     static force_inline auto consteval rotate_offset() {
         constexpr int S = (R > 0) ? (16 - (R % 16)) : -R;

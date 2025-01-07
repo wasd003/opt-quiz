@@ -43,13 +43,7 @@ static void simd_median_kernel(const std::vector<float>& src, std::vector<float>
     }
 }
 
-static void print(auto&& data, auto&& name) {
-    std::cout << name << ": ";
-    std::for_each(data.begin(), data.end(), [](auto x) { std::cout << x << " "; });
-    std::cout << std::endl;
-}
-
-static void correct_test() {
+[[maybe_unused]] static void correct_test() {
     constexpr static int N = 1e7;
     std::vector<float> src(N);
     std::vector<float> vanilla_answer(src.size() - 6);
@@ -65,18 +59,7 @@ static void correct_test() {
     vanilla_median_kernel(src, vanilla_answer);
     simd_median_kernel(src, simd_answer);
 
-    // print(src, "src");
-    // print(vanilla_answer, "vanilla_answer");
-    // print(simd_answer, "algo_answer");
-
-    const auto [vanilla_it, simd_it] = std::mismatch(vanilla_answer.begin(), vanilla_answer.end(), simd_answer.begin());
-    if (vanilla_it == vanilla_answer.end()) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Index: " << std::distance(vanilla_answer.begin(), vanilla_it) << std::endl;
-        std::cout << "vanilla: " << *vanilla_it << " simd: " << *simd_it << std::endl;
-    }
+    check_vec_eq(vanilla_answer, simd_answer);
 }
 
 
@@ -106,8 +89,8 @@ static void bm_simd_kernel(benchmark::State& state) {
     auto [src, vanilla_answer, simd_answer] = create_input_vector(N);
 
     for (auto _ : state) {
-        simd_median_kernel(src, vanilla_answer);
-        benchmark::DoNotOptimize(vanilla_answer);
+        simd_median_kernel(src, simd_answer);
+        benchmark::DoNotOptimize(simd_answer);
         benchmark::ClobberMemory();
     }
     state.SetBytesProcessed(N * state.iterations());
