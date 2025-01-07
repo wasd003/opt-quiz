@@ -13,17 +13,18 @@ static void vanilla_median_kernel(const std::vector<float>& src, std::vector<flo
     }
 }
 
+template<bool Aligned>
 static void simd_median_kernel(const std::vector<float>& src, std::vector<float>& answer) {
     assert(src.size() - answer.size() == 6);
     const int n = src.size();
     auto data = simd::load_value(0.0f);
-    auto next = simd::load_from(src.data());
+    auto next = simd::load_from<Aligned>(src.data());
     const auto load_perm = simd::make_perm<0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 8>();
     const auto store_perm = simd::make_perm<3, 11, 3, 11, 3, 11, 3, 11, 3, 11, 3, 11, 3, 11, 3, 11>();
     int i = 0;
     for (i = 0; i + 32 < n; i += 16) {
         auto lo = next;
-        next = simd::load_from(src.data() + i + 16);
+        next = simd::load_from<Aligned>(src.data() + i + 16);
         auto hi = next;
         for (int j = 0; j < 16; j += 2) {
             auto tmp = simd::permute(lo, load_perm);
@@ -31,7 +32,7 @@ static void simd_median_kernel(const std::vector<float>& src, std::vector<float>
             data = simd::masked_permute(tmp, data, store_perm, 3 << j);
             simd::inplace_shift_lo_with_carry<2>(lo, hi);
         }
-        simd::store_to(answer.data() + i, data);
+        simd::store_to<Aligned>(answer.data() + i, data);
     }
 
     /// fallback to vanilla way
@@ -57,7 +58,7 @@ static void simd_median_kernel(const std::vector<float>& src, std::vector<float>
 #endif
 
     vanilla_median_kernel(src, vanilla_answer);
-    simd_median_kernel(src, simd_answer);
+    simd_median_kernel<false>(src, simd_answer);
 
     equal_vec(vanilla_answer, simd_answer);
 }
@@ -89,7 +90,7 @@ static void bm_simd_kernel(benchmark::State& state) {
     auto [src, vanilla_answer, simd_answer] = create_input_vector(N);
 
     for (auto _ : state) {
-        simd_median_kernel(src, simd_answer);
+        simd_median_kernel<false>(src, simd_answer);
         benchmark::DoNotOptimize(simd_answer);
         benchmark::ClobberMemory();
     }
@@ -102,4 +103,8 @@ constexpr static int MAX_ELEMENT_NR = 1e7;
 BENCHMARK(bm_vanilla_kernel) ->Range(MIN_ELEMENT_NR, MAX_ELEMENT_NR);
 BENCHMARK(bm_simd_kernel) ->Range(MIN_ELEMENT_NR, MAX_ELEMENT_NR);
 
-BENCHMARK_MAIN();
+// BENCHMARK_MAIN();
+
+int main() {
+    correct_test();
+}

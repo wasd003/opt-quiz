@@ -112,6 +112,9 @@ public:
     }
 };
 
+template <typename T, std::size_t ALIGNMENT_IN_BYTES>
+using AlignedVector = std::vector<T, AlignedAllocator<T, ALIGNMENT_IN_BYTES>>;
+
 static inline void print_vec(auto&& data, auto&& name) {
     std::cout << name << ": ";
     std::for_each(data.begin(), data.end(), [](auto x) { std::cout << x << " "; });

@@ -210,16 +210,34 @@ public:
      * SEQ: 1
      * @load_from: load data from memory into SIMD register
      */
+    template<bool Aligned>
     static force_inline double_512 load_from(const double* psrc) {
-        return _mm512_loadu_pd(psrc);
+        if constexpr (Aligned) {
+            assert(reinterpret_cast<uintptr_t>(psrc) % 64 == 0);
+            return _mm512_load_pd(psrc);
+        } else {
+            return _mm512_loadu_pd(psrc);
+        }
     }
 
+    template<bool Aligned>
     static force_inline float_512 load_from(const float* psrc) {
-        return _mm512_loadu_ps(psrc);
+        if constexpr (Aligned) {
+            assert(reinterpret_cast<uintptr_t>(psrc) % 64 == 0);
+            return _mm512_load_ps(psrc);
+        } else {
+            return _mm512_loadu_ps(psrc);
+        }
     }
 
+    template<bool Aligned>
     static force_inline integer_512 load_from(const int32_t* psrc) {
-        return _mm512_loadu_epi32(psrc);
+        if constexpr (Aligned) {
+            assert(reinterpret_cast<uintptr_t>(psrc) % 64 == 0);
+            return _mm512_load_epi32(psrc);
+        } else {
+            return _mm512_loadu_epi32(psrc);
+        }
     }
 
     /**
@@ -228,29 +246,55 @@ public:
      *      - if mask bit is 1, load from memory
      *      - if mask bit is 0, load from SIMD register/immediate value
      */
+    template<bool Aligned>
     static force_inline float_512 masked_load_from(const float* psrc,
                                                    float_512 simd_reg,
                                                    uint32_t mask) {
-        return _mm512_mask_loadu_ps(simd_reg, (__mmask16)mask, psrc);
+        if constexpr (Aligned) {
+            assert(reinterpret_cast<uintptr_t>(psrc) % 64 == 0);
+            return _mm512_mask_load_ps(simd_reg, (__mmask16)mask, psrc);
+        } else {
+            return _mm512_mask_loadu_ps(simd_reg, (__mmask16)mask, psrc);
+        }
     }
 
+    template<bool Aligned>
     static force_inline float_512 masked_load_from(const float* psrc,
                                                    float immediate_val,
                                                    uint32_t mask) {
-        return _mm512_mask_loadu_ps(_mm512_set1_ps(immediate_val),
-                                    (__mmask16)mask, psrc);
+        if constexpr (Aligned) {
+            assert(reinterpret_cast<uintptr_t>(psrc) % 64 == 0);
+            return _mm512_mask_load_ps(_mm512_set1_ps(immediate_val),
+                                       (__mmask16)mask, psrc);
+        } else {
+            return _mm512_mask_loadu_ps(_mm512_set1_ps(immediate_val),
+                                        (__mmask16)mask, psrc);
+        }
     }
 
     /**
      * SEQ: 3
      * @store_to: store data from SIMD register to memory
      */
+    template<bool Aligned>
     static force_inline void store_to(void* pdst, integer_512 r) {
-        _mm512_mask_storeu_epi32(pdst, (__mmask16)0xFFFFu, r);
+        // TODO: why use mask_store instead of store?
+        if constexpr (Aligned) {
+            assert(reinterpret_cast<uintptr_t>(pdst) % 64 == 0);
+            _mm512_mask_store_epi32(pdst, (__mmask16)0xFFFFu, r);
+        } else {
+            _mm512_mask_storeu_epi32(pdst, (__mmask16)0xFFFFu, r);
+        }
     }
 
+    template<bool Aligned>
     static force_inline void store_to(void* pdst, float_512 r) {
-        _mm512_mask_storeu_ps(pdst, (__mmask16)0xFFFFu, r);
+        if constexpr (Aligned) {
+            assert(reinterpret_cast<uintptr_t>(pdst) % 64 == 0);
+            _mm512_mask_store_ps(pdst, (__mmask16)0xFFFFu, r);
+        } else {
+            _mm512_mask_storeu_ps(pdst, (__mmask16)0xFFFFu, r);
+        }
     }
 
     /**
@@ -259,9 +303,15 @@ public:
      *    - if mask bit is 1, store from SIMD register
      *    - if mask bit is 0, leave memory unchanged
      */
+    template<bool Aligned>
     static force_inline void masked_store_to(void* pdst, float_512 r,
                                              uint32_t mask) {
-        _mm512_mask_storeu_ps(pdst, (__mmask16)mask, r);
+        if constexpr (Aligned) {
+            assert(reinterpret_cast<uintptr_t>(pdst) % 64 == 0);
+            _mm512_mask_store_ps(pdst, (__mmask16)mask, r);
+        } else {
+            _mm512_mask_storeu_ps(pdst, (__mmask16)mask, r);
+        }
     }
 
     /**

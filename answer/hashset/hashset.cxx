@@ -9,8 +9,6 @@ constexpr static int TEST_STRUCT_SIZE = 48;
 constexpr static int AVX2_WIDTH = 256;
 constexpr static int BYTE_WIDTH = 8;
 
-template <typename T, std::size_t ALIGNMENT_IN_BYTES>
-using AlignedVector = std::vector<T, AlignedAllocator<T, ALIGNMENT_IN_BYTES>>;
 
 template<typename T, size_t Capacity, typename SecondHashFn>
 requires requires(T t, SecondHashFn second_hashfn) {
