@@ -2,7 +2,7 @@
 #include <quiz/base.h>
 #include <benchmark/benchmark.h>
 
-static void vanilla_median_kernel(const std::vector<float>& src, std::vector<float>& answer)
+static void vanilla_median_kernel(const auto& src, auto& answer)
 {
     assert(src.size() - answer.size() == 6);
     std::array<float, 7>  seven;
@@ -14,7 +14,7 @@ static void vanilla_median_kernel(const std::vector<float>& src, std::vector<flo
 }
 
 template<bool Aligned>
-static void simd_median_kernel(const std::vector<float>& src, std::vector<float>& answer) {
+static void simd_median_kernel(const auto& src, auto& answer) {
     assert(src.size() - answer.size() == 6);
     const int n = src.size();
     auto data = simd::load_value(0.0f);
@@ -65,9 +65,9 @@ static void simd_median_kernel(const std::vector<float>& src, std::vector<float>
 
 
 static auto create_input_vector(int N) {
-    std::vector<float> src(N);
-    std::vector<float> vanilla_answer(src.size() - 6);
-    std::vector<float> simd_answer(src.size() - 6);
+    AlignedVector<float, 64> src(N);
+    AlignedVector<float, 64> vanilla_answer(src.size() - 6);
+    AlignedVector<float, 64> simd_answer(src.size() - 6);
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
     std::generate(src.begin(), src.end(), []() { return static_cast<float>(std::rand()) / RAND_MAX; });
     return std::make_tuple(src, vanilla_answer, simd_answer);
@@ -97,14 +97,27 @@ static void bm_simd_kernel(benchmark::State& state) {
     state.SetBytesProcessed(N * state.iterations());
 }
 
+static void bm_aligned_simd_kernel(benchmark::State& state) {
+    const int N = state.range(0);
+    auto [src, vanilla_answer, simd_answer] = create_input_vector(N);
+
+    for (auto _ : state) {
+        simd_median_kernel<true>(src, simd_answer);
+        benchmark::DoNotOptimize(simd_answer);
+        benchmark::ClobberMemory();
+    }
+    state.SetBytesProcessed(N * state.iterations());
+}
+
 constexpr static int MIN_ELEMENT_NR = 1e6;
 constexpr static int MAX_ELEMENT_NR = 1e7;
 
 BENCHMARK(bm_vanilla_kernel) ->Range(MIN_ELEMENT_NR, MAX_ELEMENT_NR);
 BENCHMARK(bm_simd_kernel) ->Range(MIN_ELEMENT_NR, MAX_ELEMENT_NR);
+BENCHMARK(bm_aligned_simd_kernel) ->Range(MIN_ELEMENT_NR, MAX_ELEMENT_NR);
 
-// BENCHMARK_MAIN();
+BENCHMARK_MAIN();
 
-int main() {
-    correct_test();
-}
+// int main() {
+//     correct_test();
+// }
