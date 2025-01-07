@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <type_traits>
 #include <vector>
 #include <queue>
 #include <stack>
@@ -118,20 +119,27 @@ static inline void print_vec(auto&& data, auto&& name) {
 }
 #define PRINT_VEC(data) print_vec(data, #data)
 
-static inline bool check_vec_eq(const std::vector<float>& v0, const std::vector<float>& v1) {
+static inline bool equal_vec(const auto& v0, const auto& v1) {
+    using value_type = typename std::remove_cvref_t<decltype(v0)>::value_type;
+    static_assert((std::is_integral_v<value_type> || std::is_floating_point_v<value_type>), "unsupported type");
     if (v0.size() != v1.size()) {
         std::cout << "size mismatch" << v0.size() << "-" << v1.size() << " \n";
+        return false;
     }
-    const auto [v0it, v1it] = std::mismatch(v0.begin(), v0.end(), v1.begin(), [](float a, float b) {
-        return std::abs(a - b) < 1e-5;
+    const auto [v0it, v1it] = std::mismatch(v0.begin(), v0.end(), v1.begin(), [](auto a, auto b) {
+        if constexpr (std::is_floating_point_v<value_type>) {
+            return std::abs(a - b) < 1e-5;
+        } else {
+            return a == b;
+        }
     });
     if (v0it == v0.end()) {
         std::cout << "PASS" << std::endl;
+        return true;
     } else {
         std::cout << "FAIL" << std::endl;
         std::cout << "Index: " << std::distance(v0.begin(), v0it) << std::endl;
         std::cout << "v0: " << *v0it << " v1: " << *v1it << std::endl;
+        return false;
     }
-    return true;
-
 }

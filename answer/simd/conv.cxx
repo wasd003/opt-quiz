@@ -74,7 +74,7 @@ static auto create_input_vector(int N, int KernelSize) {
     // PRINT_VEC(vanilla_answer);
     // PRINT_VEC(simd_answer);
 
-    check_vec_eq(vanilla_answer, simd_answer);
+    equal_vec(vanilla_answer, simd_answer);
 }
 
 constexpr static int KernelSize = 3;

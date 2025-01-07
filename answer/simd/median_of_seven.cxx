@@ -59,7 +59,7 @@ static void simd_median_kernel(const std::vector<float>& src, std::vector<float>
     vanilla_median_kernel(src, vanilla_answer);
     simd_median_kernel(src, simd_answer);
 
-    check_vec_eq(vanilla_answer, simd_answer);
+    equal_vec(vanilla_answer, simd_answer);
 }
 
 
